@@ -13,7 +13,7 @@ const CFG = Object.assign({
   timetable: ['api/timetable', 'timetable.json'],
   basemap: 'basemap.json',
   pollMs: 15000,
-  tiles: true,
+  tiles: false,   // Esri keyless tiles are personal-use only; set a keyed tileUrl and turn this on
   tileUrl: {
     light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',

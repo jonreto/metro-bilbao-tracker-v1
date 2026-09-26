@@ -1,5 +1,7 @@
 # Metro Bilbao Live
 
+**Live: https://metro-bilbao-tracker-v1.vercel.app/**
+
 A live map of Metro Bilbao lines L1 and L2. It shows where every train is right now, how late it's running and the next departures from each station. Live delays come from the Bizkaia Transport Consortium's (CTB) official GTFS-Realtime feed. The map covers Bizkaia only.
 
 No dependencies: the server is plain Node (18 or newer) and the front end is vanilla JS and SVG.
@@ -70,7 +72,7 @@ Track colours follow the official lines rather than the trains that use them: th
 - the Ría del Nervión, estuaries, main rivers, motorways and trunk roads: © OpenStreetMap contributors, ODbL;
 - neighbouring areas: OpenStreetMap land polygons.
 
-When served, the page can also show **Esri Light/Dark Gray Canvas** tiles (the map button), clipped to the Bizkaia outline. Keyless `server.arcgisonline.com` tiles are fine for personal use. A public deployment should use an ArcGIS Location Platform key (set `window.MB_CONFIG = { tileUrl: {...} }` before `app.js`), or set `tiles: false`.
+Optional raster tiles can be layered underneath, clipped to the Bizkaia outline. They are **off** in the public build, because the keyless Esri tiles the code was written against are for personal use only. To turn them on, get a key from a tile provider (ArcGIS Location Platform, MapTiler, Stadia…) and set `window.MB_CONFIG = { tiles: true, tileUrl: { light: '…{z}/{y}/{x}…', dark: '…' }, tileAttribution: '…' }` before `app.js` loads.
 
 `tools/build-basemap.py` is the script that produced it. It needs the source files listed at its top.
 
@@ -112,3 +114,16 @@ To look at any moment in the browser, add `?at=2026-09-27T00:26` (Madrid time) t
 - Line 3 (Euskotren) isn't included. Its feeds are on data.ctb.eus in the same format, so `lib/realtime.js` could take a second prefix.
 - Train length (4 or 5 cars) isn't in the open feeds. Metro Bilbao's unofficial `trenes.php` has it.
 - Punctuality history: `/api/live` could be logged to build it.
+
+## Licence and data
+
+Code: MIT, see [LICENSE](LICENSE).
+
+Data shown by the app belongs to its publishers and keeps their terms:
+
+- Timetable (GTFS): Metro Bilbao open data, https://www.metrobilbao.eus/es/open-data/dataset
+- Real-time trip updates, vehicle positions and alerts: Consorcio de Transportes de Bizkaia (CTB), https://data.ctb.eus/dataset/metro-bilbao-online
+- Municipal boundaries: Basque Government / Eustat (GeoEuskadi)
+- Coast, Ría, rivers and roads: © OpenStreetMap contributors, ODbL, https://www.openstreetmap.org/copyright
+
+The map footer credits all of these. This is an independent project, not affiliated with Metro Bilbao or CTB. Train positions are estimates.
