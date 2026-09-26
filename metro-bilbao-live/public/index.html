@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Metro Bilbao Live</title>
+<meta name="description" content="Live map of Metro Bilbao lines L1 and L2 with real-time delays from CTB.">
+<meta name="theme-color" content="#E4E6E3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14181A" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F2641E'/%3E%3Cpath d='M8 23V9l8 8 8-8v14' fill='none' stroke='white' stroke-width='3.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--APP-->
+<div id="app">
+  <svg id="map" role="application" aria-label="Map of Bizkaia with Metro Bilbao lines and trains">
+    <defs>
+      <clipPath id="bizClip"><path id="bizClipPath"></path></clipPath>
+      <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"></feGaussianBlur></filter>
+    </defs>
+    <g id="world">
+      <g id="bm-base"></g>
+      <g id="tiles" clip-path="url(#bizClip)"></g>
+      <g id="bm-over"></g>
+    </g>
+    <g id="tracks"></g>
+    <g id="trails"></g>
+    <g id="stations"></g>
+    <g id="labels"></g>
+    <g id="trains"></g>
+  </svg>
+
+  <section id="card" aria-label="Network status">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"></rect><path d="M8 23V9l8 8 8-8v14"></path></svg>
+      <div>
+        <h1>Metro Bilbao</h1>
+        <p class="sub">Bizkaia · L1 and L2</p>
+      </div>
+      <button id="collapse" class="icon-btn" aria-label="Collapse panel" aria-expanded="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5"></path></svg></button>
+    </div>
+    <div class="collapsible">
+      <div class="clockrow">
+        <div id="clock" aria-live="off">--:--</div>
+        <button id="status" class="pill" data-state="loading" aria-live="polite"><i></i><span>Loading…</span></button>
+      </div>
+      <div class="lines" role="group" aria-label="Show lines">
+        <button class="linechip" data-line="1" aria-pressed="true"><b class="badge l1">L1</b><span>Etxebarri – Plentzia</span><em id="c1">0</em></button>
+        <button class="linechip" data-line="2" aria-pressed="true"><b class="badge l2">L2</b><span>Basauri – Kabiezes</span><em id="c2">0</em></button>
+      </div>
+      <dl class="stats">
+        <div><dt>On time</dt><dd id="s-ontime">–</dd></div>
+        <div><dt>Avg delay</dt><dd id="s-avg">–</dd></div>
+        <div title="Trains more than 3 minutes late"><dt>Delayed</dt><dd id="s-late">–</dd></div>
+      </dl>
+      <div class="search">
+        <label for="q" class="vh">Find a station</label>
+        <input id="q" type="search" placeholder="Find a station" autocomplete="off" spellcheck="false">
+        <ul id="results" role="listbox" hidden></ul>
+      </div>
+      <div class="cardfoot">
+        <button id="list-btn" class="textbtn">All trains</button>
+        <button id="alerts-btn" class="textbtn" hidden><span id="alerts-n">0</span> service alerts</button>
+      </div>
+    </div>
+  </section>
+
+  <aside id="panel" aria-live="polite" hidden>
+    <header class="ph">
+      <div id="ph-kicker" class="kicker"></div>
+      <h2 id="ph-title"></h2>
+      <p id="ph-sub"></p>
+      <button id="close" class="icon-btn" aria-label="Close panel"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"></path></svg></button>
+    </header>
+    <div id="pc"></div>
+  </aside>
+
+  <div id="controls">
+    <button id="zi" class="ctl" aria-label="Zoom in"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"></path></svg></button>
+    <button id="zo" class="ctl" aria-label="Zoom out"><svg viewBox="0 0 20 20"><path d="M4 10h12"></path></svg></button>
+    <button id="fit" class="ctl" aria-label="Show all of the network"><svg viewBox="0 0 20 20"><path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"></path></svg></button>
+    <button id="tiles-btn" class="ctl" aria-label="Detailed map" aria-pressed="false" hidden><svg viewBox="0 0 20 20"><path d="M3 5l4.5-1.5 5 2L17 4v11l-4.5 1.5-5-2L3 16z M7.5 3.5v11 M12.5 5.5v11"></path></svg></button>
+  </div>
+
+  <footer id="attrib"></footer>
+  <div id="toast" role="status" hidden></div>
+</div>
+<!--/APP-->
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
