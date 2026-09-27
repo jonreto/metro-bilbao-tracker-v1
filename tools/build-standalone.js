@@ -15,7 +15,7 @@ ${fonts}
 <style>${pub('style.css')}</style>
 ${body}
 <script>${safe(data)}</script>
-<script>${safe(pub('brand.js'))}</script>
+<script>${safe(['i18n/eu.js', 'i18n/es.js', 'i18n/en.js', 'brand.js'].map(pub).join('\n'))}</script>
 <script>${safe(pub('core.js'))}</script>
 <script>${safe(pub('app.js'))}</script>`;
 const out = fragment ? inner : `<!doctype html>

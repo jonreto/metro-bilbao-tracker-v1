@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en-GB">
+<html lang="eu">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Metro Bilbao Live</title>
+<title>Metro Bilbao zuzenean</title>
 <meta name="description" content="Live map of Metro Bilbao lines L1 and L2 with real-time delays from CTB.">
 <link rel="canonical" href="https://metro-bilbao-tracker-v1.vercel.app/">
 <meta property="og:type" content="website">
@@ -21,7 +21,7 @@
 <body>
 <!--APP-->
 <div id="app">
-  <svg id="map" role="application" aria-label="Map of Bizkaia with Metro Bilbao lines and trains">
+  <svg id="map" role="application" data-i18n-attr="aria-label:map.label">
     <defs>
       <clipPath id="bizClip"><path id="bizClipPath"></path></clipPath>
       <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"></feGaussianBlur></filter>
@@ -38,38 +38,39 @@
     <g id="trains"></g>
   </svg>
 
-  <section id="card" aria-label="Network status">
+  <section id="card" data-i18n-attr="aria-label:card.label">
     <div class="brand">
       <img class="brand-logo" id="brand-logo" alt="Metro Bilbao" width="132" height="35">
       <div>
-        <h1 class="vh">Metro Bilbao Live</h1>
-        <p class="sub">Live map · L1 and L2</p>
+        <h1 class="vh" data-i18n="app.title"></h1>
+        <p class="sub" data-i18n="brand.sub"></p>
       </div>
-      <button id="collapse" class="icon-btn" aria-label="Collapse panel" aria-expanded="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5"></path></svg></button>
+      <button id="collapse" class="icon-btn" data-i18n-attr="aria-label:card.collapse" aria-expanded="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12l5-5 5 5"></path></svg></button>
     </div>
     <div class="collapsible">
       <div class="clockrow">
         <div id="clock" aria-live="off">--:--</div>
-        <button id="status" class="pill" data-state="loading" aria-live="polite"><i></i><span>Loading…</span></button>
+        <button id="status" class="pill" data-state="loading" aria-live="polite"><i></i><span data-i18n="status.loading"></span></button>
       </div>
-      <div class="lines" role="group" aria-label="Show lines">
+      <div class="lines" role="group" data-i18n-attr="aria-label:lines.label">
         <button class="linechip" data-line="1" aria-pressed="true"><b class="badge l1">L1</b><span>Etxebarri – Plentzia</span><em id="c1">0</em></button>
         <button class="linechip" data-line="2" aria-pressed="true"><b class="badge l2">L2</b><span>Basauri – Kabiezes</span><em id="c2">0</em></button>
       </div>
       <dl class="stats">
-        <div><dt>On time</dt><dd id="s-ontime">–</dd></div>
-        <div><dt>Avg delay</dt><dd id="s-avg">–</dd></div>
-        <div title="Trains more than 3 minutes late"><dt>Delayed</dt><dd id="s-late">–</dd></div>
+        <div><dt data-i18n="stats.ontime"></dt><dd id="s-ontime">–</dd></div>
+        <div><dt data-i18n="stats.avg"></dt><dd id="s-avg">–</dd></div>
+        <div data-i18n-attr="title:stats.late.title"><dt data-i18n="stats.late"></dt><dd id="s-late">–</dd></div>
       </dl>
       <div class="search">
-        <label for="q" class="vh">Find a station</label>
-        <input id="q" type="search" placeholder="Find a station" autocomplete="off" spellcheck="false">
+        <label for="q" class="vh" data-i18n="search.label"></label>
+        <input id="q" type="search" data-i18n-attr="placeholder:search.placeholder" autocomplete="off" spellcheck="false">
         <ul id="results" role="listbox" hidden></ul>
       </div>
       <div class="cardfoot">
-        <button id="list-btn" class="textbtn">All trains</button>
-        <button id="alerts-btn" class="textbtn" hidden><span id="alerts-n">0</span> service alerts</button>
+        <button id="list-btn" class="textbtn" data-i18n="foot.all"></button>
+        <button id="alerts-btn" class="textbtn" hidden></button>
       </div>
+      <div class="langs" role="group" id="langs" data-i18n-attr="aria-label:lang.label"></div>
     </div>
   </section>
 
@@ -79,22 +80,25 @@
       <div id="ph-kicker" class="kicker"></div>
       <h2 id="ph-title"></h2>
       <p id="ph-sub"></p>
-      <button id="close" class="icon-btn" aria-label="Close panel"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"></path></svg></button>
+      <button id="close" class="icon-btn" data-i18n-attr="aria-label:panel.close"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"></path></svg></button>
     </header>
     <div id="pc"></div>
   </aside>
 
   <div id="controls">
-    <button id="zi" class="ctl" aria-label="Zoom in"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"></path></svg></button>
-    <button id="zo" class="ctl" aria-label="Zoom out"><svg viewBox="0 0 20 20"><path d="M4 10h12"></path></svg></button>
-    <button id="fit" class="ctl" aria-label="Show all of the network"><svg viewBox="0 0 20 20"><path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"></path></svg></button>
-    <button id="tiles-btn" class="ctl" aria-label="Detailed map" aria-pressed="false" hidden><svg viewBox="0 0 20 20"><path d="M3 5l4.5-1.5 5 2L17 4v11l-4.5 1.5-5-2L3 16z M7.5 3.5v11 M12.5 5.5v11"></path></svg></button>
+    <button id="zi" class="ctl" data-i18n-attr="aria-label:ctl.zoomin"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"></path></svg></button>
+    <button id="zo" class="ctl" data-i18n-attr="aria-label:ctl.zoomout"><svg viewBox="0 0 20 20"><path d="M4 10h12"></path></svg></button>
+    <button id="fit" class="ctl" data-i18n-attr="aria-label:ctl.fit"><svg viewBox="0 0 20 20"><path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"></path></svg></button>
+    <button id="tiles-btn" class="ctl" data-i18n-attr="aria-label:ctl.tiles" aria-pressed="false" hidden><svg viewBox="0 0 20 20"><path d="M3 5l4.5-1.5 5 2L17 4v11l-4.5 1.5-5-2L3 16z M7.5 3.5v11 M12.5 5.5v11"></path></svg></button>
   </div>
 
   <footer id="attrib"></footer>
   <div id="toast" role="status" hidden></div>
 </div>
 <!--/APP-->
+<script src="i18n/eu.js"></script>
+<script src="i18n/es.js"></script>
+<script src="i18n/en.js"></script>
 <script src="brand.js"></script>
 <script src="core.js"></script>
 <script src="app.js"></script>

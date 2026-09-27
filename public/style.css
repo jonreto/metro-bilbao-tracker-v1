@@ -129,7 +129,6 @@ h1{margin:0;font-size:17px;font-weight:760;font-stretch:92%;letter-spacing:-.005
 .linechip:hover{background:var(--hover)}
 .linechip span{font-size:13px;font-weight:560;font-stretch:92%}
 .linechip em{font-style:normal;font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;color:var(--muted)}
-.linechip em::after{content:" trains";font-weight:500}
 .linechip[aria-pressed="false"]{opacity:.45}
 .linechip[aria-pressed="false"] .badge{filter:grayscale(1)}
 .badge{display:inline-grid;place-items:center;min-width:30px;height:22px;padding:0 6px;border-radius:6px;font-size:12px;font-weight:800;font-stretch:90%;letter-spacing:.02em;font-style:normal}
@@ -145,6 +144,10 @@ h1{margin:0;font-size:17px;font-weight:760;font-stretch:92%;letter-spacing:-.005
 #results{position:absolute;left:0;right:0;top:40px;margin:0;padding:4px;list-style:none;background:var(--paper);border:1px solid var(--rule);border-radius:10px;box-shadow:var(--shadow);max-height:260px;overflow:auto;z-index:3}
 #results li{padding:7px 9px;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:8px}
 #results li[aria-selected="true"],#results li:hover{background:var(--hover)}
+.langs{display:flex;gap:4px;justify-content:flex-end;margin-top:-4px}
+.langs button{border:1px solid var(--rule);background:transparent;border-radius:7px;padding:3px 8px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--muted);cursor:pointer}
+.langs button:hover{background:var(--hover);color:var(--ink)}
+.langs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .cardfoot{display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between}
 .textbtn{border:0;background:transparent;padding:4px 2px;font-size:13px;font-weight:650;color:var(--ink);cursor:pointer;text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
 .textbtn:hover{text-decoration-color:currentColor}

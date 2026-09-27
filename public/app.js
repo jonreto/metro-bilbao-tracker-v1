@@ -34,6 +34,18 @@ const el = (tag, attrs = {}, parent) => {
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = t => t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+/* ---------- languages: texts live in i18n/eu.js, i18n/es.js, i18n/en.js ---------- */
+const I18N = window.MB_I18N || {};
+const LANGS = ['eu', 'es', 'en'].filter(l => I18N[l]);
+let lang = 'eu';
+/** t('key', {vars}) → text in the current language, falling back to English, then the key itself */
+function t(key, vars) {
+  let s = (I18N[lang] && I18N[lang][key]) ?? (I18N.en && I18N.en[key]) ?? key;
+  if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+  return s;
+}
+/** plural: tn('count.trains', 3) uses 'count.trains.one' or 'count.trains.other' */
+const tn = (key, n, vars) => t(key + (n === 1 ? '.one' : '.other'), { n, ...vars });
 const safeLS = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
@@ -67,7 +79,7 @@ async function getJSON(url) { const r = await fetch(url, { cache: 'no-cache' });
 async function loadTimetable() {
   if (window.__MB_TT) return window.__MB_TT;
   for (const u of [].concat(CFG.timetable)) { try { return await getJSON(u); } catch { /* try next */ } }
-  throw new Error('Could not load the timetable');
+  throw new Error(t('err.timetable'));
 }
 async function loadBasemap() {
   if (window.__MB_BM) return window.__MB_BM;
@@ -222,9 +234,9 @@ const originOf = i => D.st[D.prof[D.trips[i][1]][0][0]][0];
 const short = n => n.split('/')[0];
 function delayClass(d) { if (d == null) return 'sched'; if (d <= -60) return 'early'; if (d < 120) return 'ok'; if (d < 300) return 'warn'; return 'bad'; }
 function fmtDelay(d) {
-  if (d == null) return 'Timetable';
+  if (d == null) return t('delay.timetable');
   const a = Math.abs(Math.round(d));
-  if (a < 30) return 'On time';
+  if (a < 30) return t('delay.ontime');
   const m = Math.floor(a / 60), s = a % 60;
   return (d < 0 ? '−' : '+') + (m ? m + ':' + pad2(s) : a + ' s');
 }
@@ -366,7 +378,7 @@ function setTiles(on, failed) {
   $('app').classList.toggle('tiles-on', on);
   $('tiles-btn').setAttribute('aria-pressed', on);
   if (!failed) safeLS.set('mb-tiles', on ? '1' : '0');
-  if (failed) { $('tiles-btn').hidden = true; toast('Detailed map tiles could not load here, so the built-in map is shown.'); }
+  if (failed) { $('tiles-btn').hidden = true; toast(t('toast.tiles')); }
   renderAttribution(); onView();
 }
 
@@ -421,7 +433,7 @@ let stnEls = [], labelBoxes = [];
 function buildStations() {
   const g = $('stations'); g.textContent = '';
   stnEls = D.st.map(([name], i) => {
-    const grp = el('g', { class: 'stn', tabindex: '0', role: 'button', 'aria-label': name + ' station' }, g);
+    const grp = el('g', { class: 'stn', tabindex: '0', role: 'button', 'aria-label': t('stn.aria', { name }) }, g);
     const hit = el('circle', { class: 'hit' }, grp);
     const mk = el('rect', { class: 'mk' }, grp);
     grp.addEventListener('click', e => { if (dragMoved < 6) { e.stopPropagation(); select({ type: 'stn', id: i }); } });
@@ -474,8 +486,8 @@ function drawStations() {
       const box = [bx - 2, by - 1, tw + 4, th + 2];
       if (labelBoxes.some(b => overlap(b, box)) || stationBoxHit(box, i)) continue;
       labelBoxes.push(box);
-      const t = el('text', { x: lx, y: ly, class: 'lbl' + (big ? ' big' : '') + (selected && selected.type === 'stn' && selected.id === i ? ' sel' : ''), 'text-anchor': anc === 's' ? 'start' : anc === 'e' ? 'end' : 'middle' }, lg);
-      t.textContent = text;
+      const tx = el('text', { x: lx, y: ly, class: 'lbl' + (big ? ' big' : '') + (selected && selected.type === 'stn' && selected.id === i ? ' sel' : ''), 'text-anchor': anc === 's' ? 'start' : anc === 'e' ? 'end' : 'middle' }, lg);
+      tx.textContent = text;
       break;
     }
   }
@@ -519,8 +531,8 @@ function drawPlaces() {
   // the sea
   const seaX = sx(8000), seaY = sy(-26000);
   if (seaY > 60 && seaY < H - 20) {
-    const t = el('text', { x: seaX, y: seaY, class: 'place sea', 'text-anchor': 'middle' }, lg);
-    t.textContent = 'Bizkaiko Golkoa · Golfo de Bizkaia';
+    const tx = el('text', { x: seaX, y: seaY, class: 'place sea', 'text-anchor': 'middle' }, lg);
+    tx.textContent = t('map.sea');
   }
   const list = BM.labels.map(l => ({ name: PLACE_ALIAS[l[0]] || l[0], x: l[1] * q, y: l[2] * q, area: l[3], metro: METRO_TOWNS.test(l[0]) }))
     .sort((a, b) => (b.metro - a.metro) || (b.area - a.area));
@@ -535,9 +547,9 @@ function drawPlaces() {
     const box = [px - tw / 2 - 3, py - th, tw + 6, th + 4];
     if (labelBoxes.some(b => overlap(b, box)) || stationBoxHit(box, -1)) continue;
     labelBoxes.push(box); shown++;
-    const t = el('text', { x: px, y: py, class: 'place', 'text-anchor': 'middle' }, lg);
-    t.textContent = text;
-    lg.insertBefore(t, lg.firstChild);
+    const tx = el('text', { x: px, y: py, class: 'place', 'text-anchor': 'middle' }, lg);
+    tx.textContent = text;
+    lg.insertBefore(tx, lg.firstChild);
   }
 }
 
@@ -626,7 +638,7 @@ function updateTrains(tNow) {
     e.dly.setAttribute('class', 'dly ' + cls);
     e.dly.setAttribute('cx', (uy * (wid / 2 + 4)).toFixed(1)); e.dly.setAttribute('cy', (-ux * (wid / 2 + 4)).toFixed(1));
     e.dly.style.display = a.rt && cls !== 'sched' ? '' : 'none';
-    e.node.setAttribute('aria-label', `${line === 1 ? 'L1' : 'L2'} train to ${short(destOf(a.i))}, ${a.rt ? fmtDelay(d) : 'timetable position'}`);
+    e.node.setAttribute('aria-label', t('train.aria', { line: 'L' + line, dest: short(destOf(a.i)), state: a.rt ? fmtDelay(d) : t('train.aria.timetable') }));
   }
   for (const [k, e] of trainEls) if (!alive.has(k)) { e.node.remove(); trainEls.delete(k); }
   // keep the selected train on top
@@ -681,7 +693,7 @@ function departures(station, windowMin = 60) {
 }
 function whenHTML(o, now) {
   const mins = (o.exp - now) / 60;
-  const big = o.cancelled ? 'Cancelled' : mins < 0.75 ? 'Now' : Math.round(mins) + ' min';
+  const big = o.cancelled ? t('when.cancelled') : mins < 0.75 ? t('when.now') : t('when.min', { n: Math.round(mins) });
   const late = o.d != null && Math.abs(o.d) >= 60;
   return `<span class="when"><b>${big}</b><small>${late ? `<s>${hhmm(o.sched * 1000)}</s> ` : ''}${hhmm(o.exp * 1000)}</small></span>`;
 }
@@ -690,40 +702,40 @@ function renderStation(id) {
   const name = D.st[id][0];
   const L = stationLines[id];
   const badges = [1, 2].filter(l => L & l).map(l => `<b class="badge sm l${l}">L${l}</b>`).join('');
-  setHead(`${badges}<span>Station</span>`, name, departuresSub());
+  setHead(`${badges}<span>${t('stn.kicker')}</span>`, name, departuresSub());
   const deps = departures(id).filter(o => !hidden.has(o.line));
-  if (!deps.length) return `<div class="empty">No trains are due here in the next hour.${nightNote()}</div>`;
+  if (!deps.length) return `<div class="empty">${t('stn.none')}${nightNote()}</div>`;
   // group by the next station (i.e. the platform / direction)
   const groups = new Map();
   for (const o of deps) { const g = groups.get(o.next) || []; g.push(o); groups.set(o.next, g); }
   let html = '';
   for (const [, list] of [...groups].sort((a, b) => a[1][0].exp - b[1][0].exp)) {
     const dests = [...new Set(list.map(o => short(destOf(o.i))))];
-    html += `<div class="sect"><span>Towards ${esc(dests.slice(0, 3).join(', '))}</span><span>${esc('via ' + short(D.st[list[0].next][0]))}</span></div><ul class="board">`;
+    html += `<div class="sect"><span>${esc(t('stn.towards', { dests: dests.slice(0, 3).join(', ') }))}</span><span>${esc(t('stn.via', { stn: short(D.st[list[0].next][0]) }))}</span></div><ul class="board">`;
     for (const o of list.slice(0, 8)) {
-      const chip = o.rt ? `<span class="dchip ${delayClass(o.d)}">${fmtDelay(o.d)}</span>` : (RT.state === 'live' ? '<span class="dchip sched">Timetable</span>' : '');
-      const unit = o.rt && o.rt.v ? ` · unit ${esc(o.rt.v)}` : '';
-      html += `<li data-key="${o.key}" class="${o.cancelled ? 'cancel' : ''}${o.exp < now ? ' gone' : ''}"><b class="badge sm l${o.line}">L${o.line}</b><span><span class="dest">${esc(short(destOf(o.i)))}</span>${chip}<span class="meta">${o.skip ? 'Does not stop here' : 'From ' + esc(short(originOf(o.i))) + unit}</span></span>${whenHTML(o, now)}</li>`;
+      const chip = o.rt ? `<span class="dchip ${delayClass(o.d)}">${fmtDelay(o.d)}</span>` : (RT.state === 'live' ? `<span class="dchip sched">${t('delay.timetable')}</span>` : '');
+      const unit = o.rt && o.rt.v ? ' · ' + esc(t('meta.unit', { v: o.rt.v })) : '';
+      html += `<li data-key="${o.key}" class="${o.cancelled ? 'cancel' : ''}${o.exp < now ? ' gone' : ''}"><b class="badge sm l${o.line}">L${o.line}</b><span><span class="dest">${esc(short(destOf(o.i)))}</span>${chip}<span class="meta">${o.skip ? t('stn.nostop') : esc(t('stn.from', { stn: short(originOf(o.i)) })) + unit}</span></span>${whenHTML(o, now)}</li>`;
     }
     html += '</ul>';
   }
   return html + alertsFor(id);
 }
 function departuresSub() {
-  if (RT.state === 'live') return 'Departures in the next hour, with live delays';
-  if (RT.state === 'stale') return 'Departures in the next hour. Live data is out of date';
-  return 'Departures in the next hour, from the timetable';
+  if (RT.state === 'live') return t('stn.sub.live');
+  if (RT.state === 'stale') return t('stn.sub.stale');
+  return t('stn.sub.timetable');
 }
 function nightNote() {
   const h = ymd(nowMs()).h;
-  return h >= 0 && h < 6 ? ' Metro Bilbao runs all night only on Friday and Saturday nights.' : '';
+  return h >= 0 && h < 6 ? ' ' + t('stn.night') : '';
 }
 function alertsFor(stationId) {
   if (!RT.alerts.length) return '';
   const ids = new Set(Object.entries(D.stopMap).filter(([, v]) => v === stationId).map(([k]) => k));
   const list = RT.alerts.filter(a => a.stops.some(s => ids.has(s)));
   if (!list.length) return '';
-  return '<div class="sect"><span>Alerts for this station</span></div>' + list.map(alertHTML).join('');
+  return `<div class="sect"><span>${t('stn.alerts')}</span></div>` + list.map(alertHTML).join('');
 }
 /*
  * Metro Bilbao CAF units (500, 550 and 600 series share one body design), drawn from reference photos:
@@ -744,7 +756,7 @@ function trainSVG(line, unit, dest, cars) {
   const cab = 16;                                          // length of the rounded cab end
   // show the leading two and a bit cars large; the rest of the train runs off the left edge
   const vx = Math.max(-12, W0 - 2.35 * (cw + gap)), vw = W0 + 14 - vx;
-  let s = `<svg viewBox="${vx} -2 ${vw} 106" role="img" aria-label="${cars}-car unit${unit ? ' ' + esc(unit) : ''}, destination ${esc(dest)}">`;
+  let s = `<svg viewBox="${vx} -2 ${vw} 106" role="img" aria-label="${esc(t('train.side.aria', { n: cars, unit: unit || '', dest }))}">`;
   s += `<defs>
     <linearGradient id="u-alu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="u-a0"/><stop offset=".12" class="u-a1"/><stop offset=".6" class="u-a2"/><stop offset="1" class="u-a3"/></linearGradient>
     <linearGradient id="u-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A3136"/><stop offset=".5" stop-color="#171C20"/><stop offset="1" stop-color="#0E1215"/></linearGradient>
@@ -820,7 +832,7 @@ function trainSVG(line, unit, dest, cars) {
 
 /** Front view of the cab: the silver "capsule" around a black glass face. */
 function frontSVG(line, unit, dest) {
-  let s = `<svg viewBox="0 0 64 72" role="img" aria-label="Front of the train">`;
+  let s = `<svg viewBox="0 0 64 72" role="img" aria-label="${esc(t('train.front.aria'))}">`;
   s += `<defs><linearGradient id="f-alu" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="u-a3"/><stop offset=".18" class="u-a1"/><stop offset=".5" class="u-a0"/><stop offset=".82" class="u-a1"/><stop offset="1" class="u-a3"/></linearGradient>
     <linearGradient id="f-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B3338"/><stop offset=".55" stop-color="#14191C"/><stop offset="1" stop-color="#0B0E10"/></linearGradient></defs>`;
   s += `<path class="f-shell" d="M8 66Q4 66 4 61V22C4 10 12 3 24 3H40C52 3 60 10 60 22V61Q60 66 56 66Z" fill="url(#f-alu)"/>`;
@@ -855,23 +867,24 @@ function renderTrain(key) {
   const e = trainEls.get(key);
   const now = nowMs() / 1000, tNow = performance.now();
   if (!e) {
-    setHead('<span>Train</span>', 'Service ended', 'This train has reached its terminus or is no longer running.');
-    return '<div class="empty">Tap another train or a station.</div>';
+    setHead(`<span>${t('train.kicker', { v: '' }).trim()}</span>`, t('train.ended.title'), t('train.ended.sub'));
+    return `<div class="empty">${t('train.ended.hint')}</div>`;
   }
   const { a, pos } = e;
   const [, pi, start] = D.trips[a.i], P = D.prof[pi], seq = P[0], line = P[2];
   const dly = a.rt ? currentDelays(a.rt, tNow) : null;
   const dNow = dly ? dly[pos.dwell ? pos.k : pos.next] : null;
-  setHead(`<b class="badge sm l${line}">L${line}</b><span>Train ${a.rt && a.rt.v ? esc(a.rt.v) : ''}</span>`, 'To ' + short(destOf(a.i)),
-    `From ${short(originOf(a.i))} at ${hhmm((a.ctx.base / 1000 + start) * 1000)}`, frontSVG(line, a.rt && a.rt.v, short(destOf(a.i))));
-  const series = a.rt && a.rt.v ? ({ '600 series': '600 series · 5 cars', '550 series': '550 series · 4 cars', '500 series': '500 series · 4–5 cars' })[unitSeries(a.rt.v)] || null : null;
+  setHead(`<b class="badge sm l${line}">L${line}</b><span>${esc(t('train.kicker', { v: a.rt && a.rt.v ? a.rt.v : '' }).trim())}</span>`, t('train.to', { dest: short(destOf(a.i)) }),
+    t('train.from', { stn: short(originOf(a.i)), time: hhmm((a.ctx.base / 1000 + start) * 1000) }), frontSVG(line, a.rt && a.rt.v, short(destOf(a.i))));
+  const ser = a.rt && a.rt.v ? unitSeries(a.rt.v) : null;
+  const series = ser ? t('train.series.' + ser.slice(0, 3)) : null;
   let html = `<div class="unit-slot"></div>`;
   unitWanted = { key, line, unit: a.rt && a.rt.v, dest: short(destOf(a.i)), dwell: pos.dwell };
   const nextName = short(D.st[seq[pos.dwell ? pos.k : pos.next]][0]);
-  html += `<dl class="facts"><div><dt>${pos.dwell ? 'At' : 'Next'}</dt><dd title="${esc(nextName)}">${esc(nextName)}</dd></div>`
-    + `<div><dt>Running</dt><dd><span class="dchip ${a.rt ? delayClass(dNow) : 'sched'}" style="margin:0">${a.rt ? fmtDelay(dNow) : 'Timetable'}</span></dd></div>`
-    + `<div><dt>Unit</dt><dd>${a.rt && a.rt.v ? esc(a.rt.v) + (series ? `<small style="font-weight:500;color:var(--muted)"> ${series}</small>` : '') : '–'}</dd></div></dl>`;
-  html += `<div class="sect"><span>Calling at</span><span>${a.rt ? 'Expected' : 'Timetable'}</span></div><ol class="tl" style="--lc:var(--l${line})">`;
+  html += `<dl class="facts"><div><dt>${pos.dwell ? t('train.at') : t('train.next')}</dt><dd title="${esc(nextName)}">${esc(nextName)}</dd></div>`
+    + `<div><dt>${t('train.running')}</dt><dd><span class="dchip ${a.rt ? delayClass(dNow) : 'sched'}" style="margin:0">${a.rt ? fmtDelay(dNow) : t('delay.timetable')}</span></dd></div>`
+    + `<div><dt>${t('train.unit')}</dt><dd>${a.rt && a.rt.v ? esc(a.rt.v) + (series ? `<small style="font-weight:500;color:var(--muted)"> ${series}</small>` : '') : '–'}</dd></div></dl>`;
+  html += `<div class="sect"><span>${t('train.calling')}</span><span>${a.rt ? t('train.expected') : t('delay.timetable')}</span></div><ol class="tl" style="--lc:var(--l${line})">`;
   const cur = pos.dwell ? pos.k : pos.next;
   for (let k = 0; k < seq.length; k++) {
     const [arr] = stopTimes(a.i, a.ctx, a.rt, k, dly);
@@ -882,11 +895,11 @@ function renderTrain(key) {
     html += `<li class="${cls}" data-stn="${seq[k]}"><span class="dot"></span><span class="n">${esc(short(D.st[seq[k]][0]))}</span><span class="t">${showSched ? `<s>${hhmm(schedArr * 1000)}</s>` : ''}${hhmm(arr * 1000)}</span></li>`;
   }
   html += '</ol>';
-  if (!a.rt) html += `<p class="note">${RT.state === 'live' ? 'The live feed has no prediction for this train, so its position comes from the timetable.' : 'Position estimated from the timetable.'}</p>`;
+  if (!a.rt) html += `<p class="note">${RT.state === 'live' ? t('train.nolive') : t('train.estimated')}</p>`;
   return html;
 }
 function renderList() {
-  setHead('<span>Network</span>', 'All trains', `${active.length} trains running now`);
+  setHead(`<span>${t('list.kicker')}</span>`, t('list.title'), tn('list.sub', active.length));
   const tNow = performance.now();
   const rows = [];
   for (const [key, e] of trainEls) {
@@ -898,31 +911,31 @@ function renderList() {
     rows.push({ key, line, d, rt: a.rt, dest: short(destOf(a.i)), at: short(D.st[seq[pos.dwell ? pos.k : pos.next]][0]), dwell: pos.dwell });
   }
   rows.sort((x, y) => (y.d ?? -1e9) - (x.d ?? -1e9) || x.line - y.line);
-  if (!rows.length) return `<div class="empty">No trains are running right now.${nightNote()}</div>`;
-  return '<ul class="board">' + rows.map(r => `<li data-key="${r.key}"><b class="badge sm l${r.line}">L${r.line}</b><span><span class="dest">${esc(r.dest)}</span><span class="meta">${r.dwell ? 'At' : 'Next'} ${esc(r.at)}${r.rt && r.rt.v ? ' · unit ' + esc(r.rt.v) : ''}</span></span><span class="when"><span class="dchip ${r.rt ? delayClass(r.d) : 'sched'}">${r.rt ? fmtDelay(r.d) : 'Timetable'}</span></span></li>`).join('') + '</ul>';
+  if (!rows.length) return `<div class="empty">${t('list.none')}${nightNote()}</div>`;
+  return '<ul class="board">' + rows.map(r => `<li data-key="${r.key}"><b class="badge sm l${r.line}">L${r.line}</b><span><span class="dest">${esc(r.dest)}</span><span class="meta">${esc(t(r.dwell ? 'list.at' : 'list.next', { stn: r.at }))}${r.rt && r.rt.v ? ' · ' + esc(t('meta.unit', { v: r.rt.v })) : ''}</span></span><span class="when"><span class="dchip ${r.rt ? delayClass(r.d) : 'sched'}">${r.rt ? fmtDelay(r.d) : t('delay.timetable')}</span></span></li>`).join('') + '</ul>';
 }
 function alertHTML(a) {
-  const pick = o => o ? (o.en || o.es || o.eu || Object.values(o)[0] || '') : '';
-  const effect = (a.effect || '').replace(/_/g, ' ').toLowerCase();
-  return `<div class="alert">${effect && effect !== 'unknown effect' ? `<span class="tag">${esc(effect)}</span>` : ''}<h3>${esc(pick(a.header) || 'Service notice')}</h3><p>${esc(pick(a.description))}</p></div>`;
+  // alerts come from the feed in one or more languages: prefer the page language
+  const pick = o => o ? (o[lang] || o.es || o.eu || o.en || Object.values(o)[0] || '') : '';
+  const effect = a.effect && a.effect !== 'UNKNOWN_EFFECT' ? t('effect.' + a.effect) : '';
+  return `<div class="alert">${effect ? `<span class="tag">${esc(effect)}</span>` : ''}<h3>${esc(pick(a.header) || t('alerts.notice'))}</h3><p>${esc(pick(a.description))}</p></div>`;
 }
 function renderAlerts() {
-  setHead('<span>Metro Bilbao</span>', 'Service alerts', `${RT.alerts.length} active notice${RT.alerts.length === 1 ? '' : 's'} from the live feed`);
-  return RT.alerts.length ? RT.alerts.map(alertHTML).join('') : '<div class="empty">No service alerts right now.</div>';
+  setHead(`<span>${t('alerts.kicker')}</span>`, t('alerts.title'), tn('alerts.sub', RT.alerts.length));
+  return RT.alerts.length ? RT.alerts.map(alertHTML).join('') : `<div class="empty">${t('alerts.none')}</div>`;
 }
 function renderAbout() {
   const live = RT.data;
-  const stateText = { live: 'Live', stale: 'Live data delayed', offline: 'Timetable only', error: 'Live feed unavailable', loading: 'Connecting' }[RT.state];
-  setHead('<span>About the data</span>', stateText, SIMULATED ? 'Simulated clock (set with ?at=)' : 'Europe/Madrid time');
+  setHead(`<span>${t('about.kicker')}</span>`, t('about.state.' + RT.state), SIMULATED ? t('about.sim') : t('about.tz'));
   const rows = [];
-  if (RT.state === 'offline') rows.push(`<p>This copy of the map has no live connection, so trains are placed from the timetable. Run the included server (<code>node server.js</code>) or deploy it to Vercel to add live delays.</p>`);
-  if (live) rows.push(`<p>Predictions for <b>${RT.matched}</b> trips from CTB's GTFS-Realtime feed${RT.unmatched ? `, ${RT.unmatched} not in this timetable` : ''}. Feed generated at <b>${hhmmss(live.feedTime * 1000)}</b>; checked every ${CFG.pollMs / 1000} s.</p>`);
-  if (RT.error) rows.push(`<p>Last error: ${esc(RT.error)}</p>`);
-  rows.push(`<p>Timetable valid ${fmtDate(D.valid[0])} to ${fmtDate(D.valid[1])} (Metro Bilbao open data). Positions between stations are estimated from the timetable and the live delay at the next station, so they are approximate.</p>`);
-  rows.push(`<p>L1 runs Etxebarri – Plentzia along the right bank; L2 runs Basauri – Kabiezes along the left bank. They share the track between Etxebarri and San Ignazio. A few L1 trains start at Basauri.</p>`);
+  if (RT.state === 'offline') rows.push(`<p>${t('about.offline')}</p>`);
+  if (live) rows.push(`<p>${t('about.live', { n: RT.matched, unmatched: RT.unmatched ? t('about.unmatched', { n: RT.unmatched }) : '', time: hhmmss(live.feedTime * 1000), s: CFG.pollMs / 1000 })}</p>`);
+  if (RT.error) rows.push(`<p>${esc(t('about.error', { error: RT.error }))}</p>`);
+  rows.push(`<p>${esc(t('about.valid', { from: fmtDate(D.valid[0]), to: fmtDate(D.valid[1]) }))}</p>`);
+  rows.push(`<p>${esc(t('about.lines'))}</p>`);
   return `<div class="note" style="font-size:13.5px;color:var(--ink);padding-top:14px">${rows.join('')}</div>`;
 }
-const fmtDate = ds => ds ? new Date(Date.UTC(+ds.slice(0, 4), ds.slice(4, 6) - 1, +ds.slice(6))).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '?';
+const fmtDate = ds => ds ? new Date(Date.UTC(+ds.slice(0, 4), ds.slice(4, 6) - 1, +ds.slice(6))).toLocaleDateString(t('locale'), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '?';
 
 function renderPanel(force) {
   if (!selected) return;
@@ -971,24 +984,18 @@ $('close').onclick = () => select(null);
 /* ---------- card ---------- */
 function renderStatus() {
   const p = $('status');
-  const txt = {
-    loading: 'Connecting…',
-    live: 'Live',
-    stale: 'Live · delayed',
-    offline: 'Timetable',
-    error: 'Live unavailable',
-  }[RT.state];
+  const txt = t('status.' + RT.state);
   p.dataset.state = RT.state;
   p.querySelector('span').textContent = txt;
-  p.title = RT.state === 'live' ? 'Live delays from CTB GTFS-Realtime' : RT.error || '';
+  p.title = RT.state === 'live' ? t('status.title') : RT.error || '';
 }
 function renderAlertsButton() {
-  const n = RT.alerts.length; $('alerts-btn').hidden = !n; $('alerts-n').textContent = n;
+  const n = RT.alerts.length; $('alerts-btn').hidden = !n; $('alerts-btn').textContent = tn('foot.alerts', n);
   const ids = new Set(); RT.alerts.forEach(a => a.stops.forEach(s => { const v = D.stopMap[s]; if (v !== undefined) ids.add(v); }));
   stnEls.forEach((e, i) => e.g.classList.toggle('alert', ids.has(i)));
 }
 function renderStats(counts) {
-  $('c1').textContent = counts[1]; $('c2').textContent = counts[2];
+  $('c1').textContent = tn('count.trains', counts[1]); $('c2').textContent = tn('count.trains', counts[2]);
   const tNow = performance.now();
   const ds = [];
   for (const [, e] of trainEls) {
@@ -999,12 +1006,12 @@ function renderStats(counts) {
   const ontime = ds.filter(d => d < 120 && d > -60).length;
   const avg = ds.reduce((a, b) => a + b, 0) / ds.length;
   $('s-ontime').textContent = Math.round(ontime / ds.length * 100) + '%';
-  $('s-avg').textContent = fmtDelay(avg).replace('On time', '0:00');
+  $('s-avg').textContent = Math.abs(avg) < 30 ? '0:00' : fmtDelay(avg);
   $('s-late').textContent = ds.filter(d => d >= 180).length;
 }
 function renderAttribution() {
-  const parts = ['Data: <a href="https://www.metrobilbao.eus/es/open-data/dataset" target="_blank" rel="noopener">Metro Bilbao</a>, <a href="https://data.ctb.eus/dataset/metro-bilbao-online" target="_blank" rel="noopener">CTB</a>',
-    'Map: Eustat/GeoEuskadi, © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'];
+  const parts = [t('attr.data') + ': <a href="https://www.metrobilbao.eus/es/open-data/dataset" target="_blank" rel="noopener">Metro Bilbao</a>, <a href="https://data.ctb.eus/dataset/metro-bilbao-online" target="_blank" rel="noopener">CTB</a>',
+    t('attr.map') + ': Eustat/GeoEuskadi, © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'];
   if (tilesOn) parts.push(CFG.tileAttribution);
   $('attrib').innerHTML = parts.join(' · ');
 }
@@ -1017,6 +1024,32 @@ function setBrand() {
   let icon = document.querySelector('link[rel="icon"]');
   if (icon) icon.href = BRAND.rings;
 }
+
+/* ---------- language ---------- */
+function applyLanguage() {
+  document.documentElement.lang = lang;
+  document.title = t('app.title');
+  document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-attr]').forEach(e => e.dataset.i18nAttr.split(';').forEach(pair => {
+    const [attr, key] = pair.split(':'); e.setAttribute(attr, t(key));
+  }));
+  const box = $('langs');
+  box.innerHTML = LANGS.map(l => `<button type="button" lang="${l}" data-lang="${l}" aria-pressed="${l === lang}" title="${esc(I18N[l]['lang.name'])}">${esc(I18N[l]['lang.short'])}</button>`).join('');
+}
+function setLanguage(l, save = true) {
+  if (!I18N[l]) return;
+  lang = l;
+  if (save) safeLS.set('mb-lang', l);
+  applyLanguage();
+  if (D) {
+    stnEls.forEach((e, i) => e.g.setAttribute('aria-label', t('stn.aria', { name: D.st[i][0] })));
+    renderStatus(); renderAttribution(); renderAlertsButton();
+    unitSig = ''; panelSig = ''; renderPanel(false); onView();
+  }
+}
+$('langs').addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (b) setLanguage(b.dataset.lang); });
+// ?lang=es in the address, else the viewer's last choice, else Basque
+setLanguage([qs.get('lang'), safeLS.get('mb-lang'), 'eu'].find(l => l && I18N[l]) || LANGS[0], false);
 
 /* line toggles */
 document.querySelectorAll('.linechip').forEach(b => {
@@ -1032,7 +1065,7 @@ document.querySelectorAll('.linechip').forEach(b => {
 });
 $('collapse').onclick = () => {
   const c = $('card').classList.toggle('collapsed');
-  $('collapse').setAttribute('aria-expanded', !c); $('collapse').setAttribute('aria-label', c ? 'Expand panel' : 'Collapse panel');
+  $('collapse').setAttribute('aria-expanded', !c); $('collapse').setAttribute('aria-label', c ? t('card.expand') : t('card.collapse'));
 };
 $('status').onclick = () => select({ type: 'about' });
 $('list-btn').onclick = () => select({ type: 'list' });
@@ -1046,7 +1079,7 @@ function renderResults() {
   if (!v) { results.hidden = true; return; }
   resList = D.st.map((s, i) => ({ i, n: s[0] })).filter(o => fold(o.n).includes(v)).sort((a, b) => fold(a.n).indexOf(v) - fold(b.n).indexOf(v)).slice(0, 8);
   resIdx = 0;
-  results.innerHTML = resList.length ? resList.map((o, j) => `<li role="option" data-i="${o.i}" aria-selected="${j === 0}">${[1, 2].filter(l => stationLines[o.i] & l).map(l => `<b class="badge sm l${l}">L${l}</b>`).join('')}${esc(o.n)}</li>`).join('') : '<li aria-disabled="true">No station matches</li>';
+  results.innerHTML = resList.length ? resList.map((o, j) => `<li role="option" data-i="${o.i}" aria-selected="${j === 0}">${[1, 2].filter(l => stationLines[o.i] & l).map(l => `<b class="badge sm l${l}">L${l}</b>`).join('')}${esc(o.n)}</li>`).join('') : `<li aria-disabled="true">${t('search.none')}</li>`;
   results.hidden = false;
 }
 q.addEventListener('input', renderResults);
@@ -1133,7 +1166,7 @@ async function start() {
   try {
     [D, BM] = await Promise.all([loadTimetable(), loadBasemap()]);
   } catch (e) {
-    document.body.insertAdjacentHTML('beforeend', `<div class="empty" style="position:fixed;inset:auto 16px 16px;background:var(--paper);border-radius:12px">Could not load the timetable. ${esc(e.message)}</div>`);
+    document.body.insertAdjacentHTML('beforeend', `<div class="empty" style="position:fixed;inset:auto 16px 16px;background:var(--paper);border-radius:12px">${esc(t('err.timetable'))} ${esc(e.message)}</div>`);
     return;
   }
   prepare();
@@ -1149,8 +1182,8 @@ async function start() {
   renderStatus();
   // timetable validity
   const today = ymd(nowMs()).ds;
-  if (D.valid && D.valid[1] && today > D.valid[1]) toast(`This timetable ended on ${fmtDate(D.valid[1])}. Positions may be wrong until it is refreshed.`);
-  if (SIMULATED) toast('Simulated clock: ' + hhmm(nowMs()) + (speed !== 1 ? ` at ${speed}× speed` : ''));
+  if (D.valid && D.valid[1] && today > D.valid[1]) toast(t('toast.expired', { date: fmtDate(D.valid[1]) }));
+  if (SIMULATED) toast(t('toast.sim', { time: hhmm(nowMs()) }) + (speed !== 1 ? t('toast.speed', { x: speed }) : ''));
   // deep link: #abando
   const h = location.hash.slice(1);
   if (h) { const i = D.st.findIndex(s => slug(s[0]) === h); if (i >= 0) select({ type: 'stn', id: i }, { fly: true, focus: false }); }

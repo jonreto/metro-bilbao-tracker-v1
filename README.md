@@ -90,6 +90,7 @@ public/index.html       page shell
 public/style.css        styles (light and dark)
 public/core.js          service-day + delay model (shared with tests)
 public/brand.js         Metro Bilbao logo (inline images; not MIT-licensed)
+public/i18n/*.js        all page texts, one file per language
 public/app.js           map, trains, panels
 public/timetable.json   bundled timetable snapshot (valid 26 Sep – 26 Oct 2026)
 public/basemap.json     Bizkaia vector basemap
@@ -99,6 +100,20 @@ tools/build-basemap.py      how basemap.json was made
 test/                   node:test suites + GTFS-RT fixtures from a real feed snapshot
 dist/metro-bilbao-live.html  self-contained, timetable-only version (double-click to open)
 ```
+
+## Languages
+
+The page is in Basque (default), Spanish and English. Every text lives in one file per language:
+
+```
+public/i18n/eu.js   Euskara (default)
+public/i18n/es.js   Castellano
+public/i18n/en.js   English
+```
+
+Edit the text to the right of each key. Keep `{placeholders}` such as `{n}` or `{stn}`; they are filled in at run time. Keys ending in `.one` / `.other` are singular and plural. `npm test` checks that all three files have the same keys and placeholders.
+
+Visitors switch language with the EU · ES · EN buttons in the card, and the choice is remembered. A link can force one with `?lang=es`. To add a language, copy `en.js`, translate it, add it to the `<script>` list in `index.html` and to `LANGS` in `app.js`.
 
 ## Testing
 
