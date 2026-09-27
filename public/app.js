@@ -549,14 +549,30 @@ function trainShape(line) {
   const g = el('g', { class: 'train enter l' + line });
   el('circle', { class: 'hit', r: 14 }, g);
   const rot = el('g', { class: 'rot' }, g);
-  el('path', { class: 'shadow' }, rot);
-  el('rect', { class: 'halo' }, rot);
-  el('rect', { class: 'dwell' }, rot);
-  el('path', { class: 'body' }, rot);
-  el('path', { class: 'cars' }, rot);
-  el('path', { class: 'nose' }, rot);
+  for (const c of ['shadow', 'halo', 'dwell', 'body', 'roof', 'panto', 'glass', 'head', 'tail']) el(c === 'halo' || c === 'dwell' ? 'rect' : 'path', { class: c }, rot);
   el('circle', { class: 'dly', r: 3.6 }, g);
   return g;
+}
+const carsOf = unit => (parseInt(unit, 10) >= 600 ? 5 : 4);   // every 600-series unit runs with 5 cars; most 500/550s with 4
+/** Top-down sprite pointing +x: separate cars, cab windscreen, pantographs, head and tail lights. */
+function spritePaths(len, wid, n) {
+  const gap = Math.max(0.9, len * 0.014), cl = (len - gap * (n - 1)) / n, r = wid / 2, h = len / 2;
+  let body = '', roof = '', panto = '';
+  for (let c = 0; c < n; c++) {
+    const x0 = -h + c * (cl + gap), x1 = x0 + cl;
+    const front = c === n - 1, rear = c === 0;
+    const rf = front ? r * 1.05 : 1.2, rr = rear ? r * .7 : 1.2;
+    body += `M${x0 + rr} ${-r}H${x1 - rf}Q${x1} ${-r} ${x1} ${-r + rf}V${r - rf}Q${x1} ${r} ${x1 - rf} ${r}H${x0 + rr}Q${x0} ${r} ${x0} ${r - rr}V${-r + rr}Q${x0} ${-r} ${x0 + rr} ${-r}Z`;
+    if (len >= 30) roof += `M${x0 + (rear ? r * .8 : 1.5)} 0H${x1 - (front ? r * 1.3 : 1.5)}`;
+    const pan = n === 5 ? (c === 1 || c === 3) : (c === 1 || c === 2);
+    if (pan && len >= 38) { const m = (x0 + x1) / 2, q = Math.min(cl * .2, r * .7); panto += `M${m - q} ${-q * .7}H${m + q}V${q * .7}H${m - q}Z M${m} ${-q * .7}V${q * .7}`; }
+  }
+  const xf = h, g = `M${xf - r * .95} ${-r * .72}Q${xf - r * .35} ${-r * .8} ${xf - .9} ${-r * .38}V${r * .38}Q${xf - r * .35} ${r * .8} ${xf - r * .95} ${r * .72}Z`;
+  const dot = (x, y, rad) => `M${x - rad} ${y}a${rad} ${rad} 0 1 0 ${rad * 2} 0a${rad} ${rad} 0 1 0 ${-rad * 2} 0`;
+  const lr = Math.max(.9, wid * .1);
+  const head = len >= 24 ? dot(xf - .8, -r * .55, lr) + dot(xf - .8, r * .55, lr) : '';
+  const tail = len >= 24 ? dot(-h + .9, -r * .55, lr * .85) + dot(-h + .9, r * .55, lr * .85) : '';
+  return { body, roof, panto, glass: g, head, tail };
 }
 function updateTrains(tNow) {
   const now = nowMs() / 1000;
@@ -588,23 +604,18 @@ function updateTrains(tNow) {
     const ang = Math.atan2(uy, ux) * 180 / Math.PI;
     e.node.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)})`);
     e.rot.setAttribute('transform', `rotate(${ang.toFixed(1)})`);
-    const shapeKey = len.toFixed(0) + '/' + wid.toFixed(0);
+    const n = carsOf(a.rt && a.rt.v), tl = n === 5 ? len * 1.2 : len;
+    const shapeKey = tl.toFixed(0) + '/' + wid.toFixed(0) + '/' + n;
     if (e.shape !== shapeKey) {
       e.shape = shapeKey;
-      const h = len / 2, r = wid / 2, n = wid * .55;
-      // body with a rounded, slightly tapered cab at the front (+x)
-      const body = `M${-h + r * .5} ${-r}H${h - n}Q${h} ${-r} ${h} 0Q${h} ${r} ${h - n} ${r}H${-h + r * .5}Q${-h} ${r} ${-h} 0Q${-h} ${-r} ${-h + r * .5} ${-r}Z`;
-      e.rot.querySelector('.body').setAttribute('d', body);
-      e.rot.querySelector('.shadow').setAttribute('d', body);
-      e.rot.querySelector('.shadow').setAttribute('transform', 'translate(1 2)');
-      let cars = ''; for (let c = 1; c < 4; c++) { const cx = -h + len * c / 4; cars += `M${cx} ${-r + 2}V${r - 2}`; }
-      e.rot.querySelector('.cars').setAttribute('d', cars);
-      e.rot.querySelector('.nose').setAttribute('d', `M${h - n - 3} ${-r + 1.1}H${h - n}Q${h - 1.1} ${-r + 1.1} ${h - 1.1} 0Q${h - 1.1} ${r - 1.1} ${h - n} ${r - 1.1}H${h - n - 3}Z`);
-      const halo = e.rot.querySelector('.halo'), dw = e.rot.querySelector('.dwell');
-      for (const [node, grow] of [[halo, 4], [dw, 1]]) {
-        node.setAttribute('x', -h - grow); node.setAttribute('y', -r - grow); node.setAttribute('width', len + grow * 2); node.setAttribute('height', wid + grow * 2); node.setAttribute('rx', r + grow);
+      const P = spritePaths(tl, wid, n), q = c => e.rot.querySelector('.' + c);
+      for (const k of ['body', 'roof', 'panto', 'glass', 'head', 'tail']) q(k).setAttribute('d', P[k]);
+      q('shadow').setAttribute('d', P.body); q('shadow').setAttribute('transform', 'translate(1 2)');
+      const h = tl / 2, r = wid / 2;
+      for (const [node, grow] of [[q('halo'), 4], [q('dwell'), 1]]) {
+        node.setAttribute('x', -h - grow); node.setAttribute('y', -r - grow); node.setAttribute('width', tl + grow * 2); node.setAttribute('height', wid + grow * 2); node.setAttribute('rx', r + grow);
       }
-      e.hit.setAttribute('r', Math.max(14, len / 2));
+      e.hit.setAttribute('r', Math.max(14, tl / 2));
     }
     const d = pos.dly ? pos.dly[pos.dwell ? pos.k : pos.next] : null;
     const cls = a.rt ? delayClass(d) : 'sched';
@@ -709,36 +720,88 @@ function alertsFor(stationId) {
   if (!list.length) return '';
   return '<div class="sect"><span>Alerts for this station</span></div>' + list.map(alertHTML).join('');
 }
-function trainSVG(line, unit) {
-  // side view of a four-car unit; wheels spin and track slides while moving, doors part while dwelling
-  const cars = 4, cw = 78, gap = 3, W0 = cars * cw + (cars - 1) * gap, H0 = 44, y0 = 8;
-  let s = `<svg viewBox="-6 0 ${W0 + 12} 74" role="img" aria-label="Illustration of the train">`;
-  s += `<g class="u-track">`; for (let x = -14; x < W0 + 28; x += 14) s += `<line class="u-sleeper" x1="${x}" y1="66" x2="${x + 6}" y2="66"/>`; s += `</g>`;
-  s += `<line class="u-rail" x1="-6" y1="63" x2="${W0 + 6}" y2="63"/>`;
+/**
+ * Side view of a Metro Bilbao CAF unit (500/550/600 series share one design): stainless-steel body,
+ * continuous dark glazing, four sliding double doors per side on each car, cabs at both ends,
+ * single-arm pantographs to the 1500 V overhead line, 4 cars (72 m) or 5 cars for the 600s.
+ * The right-hand end is the front. Classes on the wrapper animate it: .moving spins wheels and scrolls
+ * the track, .open slides the doors apart and lights the door lamps.
+ */
+function trainSVG(line, unit, dest, cars) {
+  const cw = 104, gap = 6, W0 = cars * cw + (cars - 1) * gap;
+  const yT = 28, yB = 80, yW = 36, hW = 16;             // roof, bottom, window band
+  let s = `<svg viewBox="-10 0 ${W0 + 22} 106" role="img" aria-label="${cars}-car unit${unit ? ' ' + esc(unit) : ''} to ${esc(dest)}">`;
+  s += `<defs><linearGradient id="u-steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="u-s0"/><stop offset=".55" class="u-s1"/><stop offset="1" class="u-s2"/></linearGradient>
+    <radialGradient id="u-glow"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".95"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient></defs>`;
+  // overhead line and track
+  s += `<line class="u-wire" x1="-10" y1="7" x2="${W0 + 12}" y2="7"/>`;
+  s += `<g class="u-track">`; for (let x = -24; x < W0 + 30; x += 12) s += `<rect class="u-sleeper" x="${x}" y="97" width="7" height="3" rx="1"/>`; s += `</g>`;
+  s += `<line class="u-rail" x1="-10" y1="96" x2="${W0 + 12}" y2="96"/>`;
+  s += `<g class="u-bodyg">`;
   for (let c = 0; c < cars; c++) {
-    const x = c * (cw + gap);
-    const first = c === 0, last = c === cars - 1;
-    const r = 5;
-    // car body
-    let d;
-    if (last) d = `M${x} ${y0 + r}Q${x} ${y0} ${x + r} ${y0}H${x + cw - 12}Q${x + cw - 2} ${y0} ${x + cw} ${y0 + 14}V${y0 + H0 - 4}Q${x + cw} ${y0 + H0} ${x + cw - 4} ${y0 + H0}H${x + 4}Q${x} ${y0 + H0} ${x} ${y0 + H0 - 4}Z`;
-    else if (first) d = `M${x + cw} ${y0 + r}Q${x + cw} ${y0} ${x + cw - r} ${y0}H${x + 12}Q${x + 2} ${y0} ${x} ${y0 + 14}V${y0 + H0 - 4}Q${x} ${y0 + H0} ${x + 4} ${y0 + H0}H${x + cw - 4}Q${x + cw} ${y0 + H0} ${x + cw} ${y0 + H0 - 4}Z`;
-    else d = `M${x} ${y0 + r}Q${x} ${y0} ${x + r} ${y0}H${x + cw - r}Q${x + cw} ${y0} ${x + cw} ${y0 + r}V${y0 + H0 - 4}Q${x + cw} ${y0 + H0} ${x + cw - 4} ${y0 + H0}H${x + 4}Q${x} ${y0 + H0} ${x} ${y0 + H0 - 4}Z`;
-    s += `<path class="u-body" d="${d}"/>`;
-    s += `<rect class="u-band" x="${x + (first ? 9 : 3)}" y="${y0 + 8}" width="${cw - (first || last ? 12 : 6)}" height="13" rx="2"/>`;
-    s += `<rect class="u-stripe l${line}" x="${x + 2}" y="${y0 + 26}" width="${cw - 4}" height="3.2" rx="1"/>`;
-    for (const dx of [18, cw - 30]) {
-      s += `<rect class="u-door l" x="${x + dx}" y="${y0 + 9}" width="6" height="${H0 - 12}" rx="1"/><rect class="u-door r" x="${x + dx + 6}" y="${y0 + 9}" width="6" height="${H0 - 12}" rx="1"/>`;
+    const x = c * (cw + gap), xe = x + cw, front = c === cars - 1, rear = c === 0;
+    // gangway bellows to the next car
+    if (!front) { s += `<rect class="u-gang" x="${xe - 1}" y="${yW - 3}" width="${gap + 2}" height="${yB - yW - 2}" rx="1.5"/>`; for (let k = 1; k < 3; k++) s += `<line class="u-gangl" x1="${xe - 1 + k * (gap + 2) / 3}" y1="${yW - 2}" x2="${xe - 1 + k * (gap + 2) / 3}" y2="${yB - 6}"/>`; }
+    // body outline: cab ends slope back at the windscreen
+    const nose = 20;
+    let d = `M${rear ? x + nose : x + 5} ${yT}`;
+    d += front ? `H${xe - nose}C${xe - 8} ${yT} ${xe - 2} ${yT + 8} ${xe} ${yT + 24}V${yB - 4}Q${xe} ${yB} ${xe - 4} ${yB}` : `H${xe - 5}Q${xe} ${yT} ${xe} ${yT + 5}V${yB - 3}Q${xe} ${yB} ${xe - 3} ${yB}`;
+    d += rear ? `H${x + 4}Q${x} ${yB} ${x} ${yB - 4}V${yT + 24}C${x + 2} ${yT + 8} ${x + 8} ${yT} ${x + nose} ${yT}Z` : `H${x + 3}Q${x} ${yB} ${x} ${yB - 3}V${yT + 5}Q${x} ${yT} ${x + 5} ${yT}Z`;
+    s += `<path class="u-body" d="${d}" fill="url(#u-steel)"/>`;
+    s += `<rect class="u-roof" x="${rear ? x + nose - 2 : x + 3}" y="${yT - 2.5}" width="${cw - (rear || front ? nose - 2 : 0) - 6}" height="3.5" rx="1.5"/>`;
+    // roof equipment (air conditioning) and pantographs
+    s += `<rect class="u-ac" x="${x + cw / 2 - 17}" y="${yT - 6}" width="34" height="4.5" rx="1.5"/>`;
+    const pan = cars === 5 ? (c === 1 || c === 3) : (c === 1 || c === 2);
+    if (pan) { const px = x + cw / 2 + (c < cars / 2 ? -26 : 26); s += `<g class="u-panto"><rect x="${px - 8}" y="${yT - 4.5}" width="16" height="2.5" rx="1"/><path d="M${px - 6} ${yT - 3.5}L${px + 7} ${yT - 13}L${px - 2} ${yT - 20}M${px - 8} ${yT - 20}H${px + 4}"/></g>`; }
+    // glazing: continuous dark band; saloon lights show through when the doors open
+    const g0 = rear ? x + nose + 1 : x + 4, g1 = front ? xe - nose - 1 : xe - 4;
+    s += `<rect class="u-band" x="${g0}" y="${yW}" width="${g1 - g0}" height="${hW}" rx="2.5"/>`;
+    for (let k = 1; k < 6; k++) { const px = g0 + (g1 - g0) * k / 6; s += `<line class="u-pillar" x1="${px}" y1="${yW + 1}" x2="${px}" y2="${yW + hW - 1}"/>`; }
+    // stripe in the line colour, skirt
+    s += `<rect class="u-stripe l${line}" x="${rear ? x + 3 : x}" y="${yB - 22}" width="${cw - (rear ? 3 : 0) - (front ? 3 : 0)}" height="3" />`;
+    s += `<rect class="u-skirt" x="${x + 2}" y="${yB - 8}" width="${cw - 4}" height="8" rx="2"/>`;
+    // four double doors
+    const pos = front ? [.13, .35, .57, .79] : rear ? [.21, .43, .65, .87] : [.14, .38, .62, .86];
+    for (const f of pos) {
+      const dx = x + cw * f, dw = 6.5;
+      s += `<rect class="u-doorway" x="${dx - dw}" y="${yW - 4}" width="${dw * 2}" height="${yB - yW - 6}" rx="1.5"/>`;
+      s += `<g class="u-door l"><rect class="u-leaf" x="${dx - dw}" y="${yW - 4}" width="${dw}" height="${yB - yW - 6}" rx="1"/><rect class="u-dwin" x="${dx - dw + 1.4}" y="${yW - 1}" width="${dw - 2.4}" height="${hW + 2}" rx="1"/></g>`;
+      s += `<g class="u-door r"><rect class="u-leaf" x="${dx}" y="${yW - 4}" width="${dw}" height="${yB - yW - 6}" rx="1"/><rect class="u-dwin" x="${dx + 1}" y="${yW - 1}" width="${dw - 2.4}" height="${hW + 2}" rx="1"/></g>`;
+      s += `<circle class="u-lamp" cx="${dx}" cy="${yW - 6.5}" r="1.3"/>`;
     }
-    for (const bx of [x + 14, x + cw - 14]) {
-      s += `<rect class="u-bogie" x="${bx - 11}" y="${y0 + H0}" width="22" height="5" rx="2"/>`;
-      for (const wxp of [bx - 6, bx + 6]) s += `<g class="u-wheelg"><circle class="u-wheel" cx="${wxp}" cy="${y0 + H0 + 6}" r="4.6"/><line class="u-spoke" x1="${wxp - 4}" y1="${y0 + H0 + 6}" x2="${wxp + 4}" y2="${y0 + H0 + 6}"/></g>`;
+    // underframe, bogies and wheels
+    s += `<rect class="u-under" x="${x + 30}" y="${yB}" width="${cw - 60}" height="6" rx="1.5"/>`;
+    for (const bx of [x + 19, xe - 19]) {
+      s += `<rect class="u-bogie" x="${bx - 14}" y="${yB + 1}" width="28" height="6" rx="2.5"/>`;
+      for (const wx of [bx - 8, bx + 8]) s += `<g class="u-wheelg"><circle class="u-wheel" cx="${wx}" cy="${yB + 9}" r="6"/><path class="u-spoke" d="M${wx - 4.5} ${yB + 9}H${wx + 4.5}M${wx} ${yB + 4.5}V${yB + 13.5}"/><circle class="u-hub" cx="${wx}" cy="${yB + 9}" r="1.6"/></g>`;
     }
+    // cabs: raked windscreen with the destination display, lights at buffer height
+    if (front) {
+      s += `<path class="u-screen" d="M${xe - nose + 1} ${yW - 5}C${xe - 9} ${yW - 5} ${xe - 3} ${yW} ${xe - .8} ${yW + 12}L${xe - .8} ${yW + hW + 2}H${xe - nose + 1}Z"/>`;
+      s += `<rect class="u-led" x="${xe - nose + 3}" y="${yW - 2}" width="${nose - 7}" height="5" rx="1"/><text class="u-dest" x="${xe - nose / 2 - 0.5}" y="${yW + 1.9}" text-anchor="middle">${esc(dest.toUpperCase().slice(0, 12))}</text>`;
+      s += `<circle class="u-glow" cx="${xe + 2}" cy="${yB - 13}" r="11" fill="url(#u-glow)"/><rect class="u-light" x="${xe - 5}" y="${yB - 15}" width="5" height="3.5" rx="1.2"/>`;
+    }
+    if (rear) {
+      s += `<path class="u-screen" d="M${x + nose - 1} ${yW - 5}C${x + 9} ${yW - 5} ${x + 3} ${yW} ${x + .8} ${yW + 12}L${x + .8} ${yW + hW + 2}H${x + nose - 1}Z"/>`;
+      s += `<rect class="u-tail" x="${x}" y="${yB - 15}" width="5" height="3.5" rx="1.2"/>`;
+    }
+    if (front && unit) s += `<text class="u-num" x="${xe - nose - 12}" y="${yB - 11}" text-anchor="end">${esc(unit)}</text>`;
   }
-  // head and tail lights: the right-hand end is the front
-  s += `<circle class="u-light" cx="${W0 - 4}" cy="${y0 + 34}" r="2.2"/><circle class="u-tail" cx="4" cy="${y0 + 34}" r="2"/>`;
-  if (unit) s += `<text class="u-num" x="${W0 - 26}" y="${y0 + 18}" text-anchor="middle">${esc(unit)}</text>`;
+  s += `</g>`;
   return s + '</svg>';
+}
+let unitWanted = null, unitNode = null, unitSig = '';
+function mountUnit() {
+  const slot = $('pc').querySelector('.unit-slot');
+  if (!slot || !unitWanted) return;
+  const w = unitWanted, sig = [w.key, w.line, w.unit, w.dest].join('|');
+  if (!unitNode || unitSig !== sig) {
+    unitNode = document.createElement('div');
+    unitNode.innerHTML = trainSVG(w.line, w.unit, w.dest, carsOf(w.unit));
+    unitSig = sig;
+  }
+  unitNode.className = 'unit ' + (w.dwell ? 'open' : 'moving');
+  slot.replaceWith(unitNode);
 }
 function renderTrain(key) {
   const e = trainEls.get(key);
@@ -753,8 +816,9 @@ function renderTrain(key) {
   const dNow = dly ? dly[pos.dwell ? pos.k : pos.next] : null;
   setHead(`<b class="badge sm l${line}">L${line}</b><span>Train ${a.rt && a.rt.v ? esc(a.rt.v) : ''}</span>`, 'To ' + short(destOf(a.i)),
     `From ${short(originOf(a.i))} at ${hhmm((a.ctx.base / 1000 + start) * 1000)}`);
-  const series = a.rt && a.rt.v ? unitSeries(a.rt.v) : null;
-  let html = `<div class="unit ${pos.dwell ? 'open' : 'moving'}">${trainSVG(line, a.rt && a.rt.v)}</div>`;
+  const series = a.rt && a.rt.v ? ({ '600 series': '600 series · 5 cars', '550 series': '550 series · 4 cars', '500 series': '500 series · 4–5 cars' })[unitSeries(a.rt.v)] || null : null;
+  let html = `<div class="unit-slot"></div>`;
+  unitWanted = { key, line, unit: a.rt && a.rt.v, dest: short(destOf(a.i)), dwell: pos.dwell };
   const nextName = short(D.st[seq[pos.dwell ? pos.k : pos.next]][0]);
   html += `<dl class="facts"><div><dt>${pos.dwell ? 'At' : 'Next'}</dt><dd title="${esc(nextName)}">${esc(nextName)}</dd></div>`
     + `<div><dt>Running</dt><dd><span class="dchip ${a.rt ? delayClass(dNow) : 'sched'}" style="margin:0">${a.rt ? fmtDelay(dNow) : 'Timetable'}</span></dd></div>`
@@ -821,10 +885,12 @@ function renderPanel(force) {
   else if (selected.type === 'alerts') html = renderAlerts();
   else html = renderAbout();
   const sig = html + $('ph-title').textContent + $('ph-sub').textContent;
+  if (unitNode && unitWanted) unitNode.className = 'unit ' + (unitWanted.dwell ? 'open' : 'moving');
   if (!force && sig === panelSig) { positionTimelineMarker(); return; }
   panelSig = sig;
   const pc = $('pc'), st = pc.scrollTop;
   pc.innerHTML = html;
+  mountUnit();
   pc.scrollTop = force ? 0 : st;
   positionTimelineMarker();
   if (force && selected.type === 'train') {
