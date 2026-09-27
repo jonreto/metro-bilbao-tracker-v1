@@ -563,7 +563,7 @@ function spritePaths(len, wid, n) {
     const front = c === n - 1, rear = c === 0;
     const rf = front ? r * 1.05 : 1.2, rr = rear ? r * .7 : 1.2;
     body += `M${x0 + rr} ${-r}H${x1 - rf}Q${x1} ${-r} ${x1} ${-r + rf}V${r - rf}Q${x1} ${r} ${x1 - rf} ${r}H${x0 + rr}Q${x0} ${r} ${x0} ${r - rr}V${-r + rr}Q${x0} ${-r} ${x0 + rr} ${-r}Z`;
-    if (len >= 30) roof += `M${x0 + (rear ? r * .8 : 1.5)} 0H${x1 - (front ? r * 1.3 : 1.5)}`;
+    if (len >= 30) { const a0 = x0 + (rear ? r * 1.2 : cl * .12), a1 = x1 - (front ? r * 1.6 : cl * .12); roof += `M${a0} ${-r * .28}H${a1}V${r * .28}H${a0}Z`; }
     const pan = n === 5 ? (c === 1 || c === 3) : (c === 1 || c === 2);
     if (pan && len >= 38) { const m = (x0 + x1) / 2, q = Math.min(cl * .2, r * .7); panto += `M${m - q} ${-q * .7}H${m + q}V${q * .7}H${m - q}Z M${m} ${-q * .7}V${q * .7}`; }
   }
@@ -653,7 +653,12 @@ function select(sel, opts = {}) {
   if (open && opts.focus) setTimeout(() => $('close').focus({ preventScroll: true }), 0);
 }
 const slug = n => short(n).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-function setHead(kicker, title, sub) { $('ph-kicker').innerHTML = kicker; $('ph-title').textContent = title; $('ph-sub').textContent = sub; }
+function setHead(kicker, title, sub, front = '') {
+  $('ph-kicker').innerHTML = kicker; $('ph-title').textContent = title; $('ph-sub').textContent = sub;
+  const f = $('ph-front');
+  if (f.dataset.sig !== front) { f.innerHTML = front; f.dataset.sig = front; }
+  f.hidden = !front; f.parentNode.classList.toggle('has-front', !!front);
+}
 
 function departures(station, windowMin = 60) {
   const now = nowMs() / 1000, out = [], seen = new Set(), tNow = performance.now();
@@ -720,74 +725,117 @@ function alertsFor(stationId) {
   if (!list.length) return '';
   return '<div class="sect"><span>Alerts for this station</span></div>' + list.map(alertHTML).join('');
 }
-/**
- * Side view of a Metro Bilbao CAF unit (500/550/600 series share one design): stainless-steel body,
- * continuous dark glazing, four sliding double doors per side on each car, cabs at both ends,
- * single-arm pantographs to the 1500 V overhead line, 4 cars (72 m) or 5 cars for the 600s.
- * The right-hand end is the front. Classes on the wrapper animate it: .moving spins wheels and scrolls
- * the track, .open slides the doors apart and lights the door lamps.
+/*
+ * Metro Bilbao CAF units (500, 550 and 600 series share one body design), drawn from reference photos:
+ *  - brushed-aluminium body with rounded roof shoulders and dark roof ventilation grilles
+ *  - tall, continuous dark glazing; three double sliding doors per side on every car, each doorway
+ *    edged with a thin orange-red line; orange-red band along the bottom of the body
+ *  - capsule-shaped cab: a thick silver surround framing a black glass face with the destination LED
+ *    at the top, windscreen with a single wiper, the Metro Bilbao rings, and small round lamps low down
+ *  - 4 cars (72 m), or 5 cars for the 600s; 1500 V overhead line picked up by pantographs.
  */
+const BRAND = window.MB_BRAND || null;
+const ringsImg = (x, y, w, cls = '') => BRAND ? `<image class="${cls}" href="${BRAND.rings}" x="${x}" y="${y}" width="${w}" height="${(w * BRAND.ringsRatio).toFixed(2)}" preserveAspectRatio="xMidYMid meet"/>` : '';
+
+/** Side view. The right-hand end is the front. Wrapper classes: .moving (wheels, track, headlight) and .open (doors). */
 function trainSVG(line, unit, dest, cars) {
-  const cw = 104, gap = 6, W0 = cars * cw + (cars - 1) * gap;
-  const yT = 28, yB = 80, yW = 36, hW = 16;             // roof, bottom, window band
-  let s = `<svg viewBox="-10 0 ${W0 + 22} 106" role="img" aria-label="${cars}-car unit${unit ? ' ' + esc(unit) : ''} to ${esc(dest)}">`;
-  s += `<defs><linearGradient id="u-steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="u-s0"/><stop offset=".55" class="u-s1"/><stop offset="1" class="u-s2"/></linearGradient>
-    <radialGradient id="u-glow"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".95"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient></defs>`;
-  // overhead line and track
-  s += `<line class="u-wire" x1="-10" y1="7" x2="${W0 + 12}" y2="7"/>`;
-  s += `<g class="u-track">`; for (let x = -24; x < W0 + 30; x += 12) s += `<rect class="u-sleeper" x="${x}" y="97" width="7" height="3" rx="1"/>`; s += `</g>`;
-  s += `<line class="u-rail" x1="-10" y1="96" x2="${W0 + 12}" y2="96"/>`;
+  const cw = 124, gap = 5, W0 = cars * cw + (cars - 1) * gap;
+  const yT = 22, yB = 80, yW = 30, yWb = 56, rS = 10;    // roof, body bottom, glazing top/bottom, shoulder radius
+  const cab = 16;                                          // length of the rounded cab end
+  // show the leading two and a bit cars large; the rest of the train runs off the left edge
+  const vx = Math.max(-12, W0 - 2.35 * (cw + gap)), vw = W0 + 14 - vx;
+  let s = `<svg viewBox="${vx} -2 ${vw} 106" role="img" aria-label="${cars}-car unit${unit ? ' ' + esc(unit) : ''}, destination ${esc(dest)}">`;
+  s += `<defs>
+    <linearGradient id="u-alu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="u-a0"/><stop offset=".12" class="u-a1"/><stop offset=".6" class="u-a2"/><stop offset="1" class="u-a3"/></linearGradient>
+    <linearGradient id="u-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A3136"/><stop offset=".5" stop-color="#171C20"/><stop offset="1" stop-color="#0E1215"/></linearGradient>
+    <linearGradient id="u-sheen" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="u-inside" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF4DA"/><stop offset="1" stop-color="#E9D7B4"/></linearGradient>
+    <radialGradient id="u-glow"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".9"/><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"/></radialGradient>
+  </defs>`;
+  s += `<line class="u-wire" x1="-12" y1="3" x2="${W0 + 14}" y2="3"/>`;
+  s += `<g class="u-track">`; for (let x = -30; x < W0 + 34; x += 11) s += `<rect class="u-sleeper" x="${x}" y="96.5" width="6.5" height="3" rx="1"/>`; s += `</g>`;
+  s += `<line class="u-rail" x1="-12" y1="95.5" x2="${W0 + 14}" y2="95.5"/>`;
   s += `<g class="u-bodyg">`;
   for (let c = 0; c < cars; c++) {
     const x = c * (cw + gap), xe = x + cw, front = c === cars - 1, rear = c === 0;
-    // gangway bellows to the next car
-    if (!front) { s += `<rect class="u-gang" x="${xe - 1}" y="${yW - 3}" width="${gap + 2}" height="${yB - yW - 2}" rx="1.5"/>`; for (let k = 1; k < 3; k++) s += `<line class="u-gangl" x1="${xe - 1 + k * (gap + 2) / 3}" y1="${yW - 2}" x2="${xe - 1 + k * (gap + 2) / 3}" y2="${yB - 6}"/>`; }
-    // body outline: cab ends slope back at the windscreen
-    const nose = 20;
-    let d = `M${rear ? x + nose : x + 5} ${yT}`;
-    d += front ? `H${xe - nose}C${xe - 8} ${yT} ${xe - 2} ${yT + 8} ${xe} ${yT + 24}V${yB - 4}Q${xe} ${yB} ${xe - 4} ${yB}` : `H${xe - 5}Q${xe} ${yT} ${xe} ${yT + 5}V${yB - 3}Q${xe} ${yB} ${xe - 3} ${yB}`;
-    d += rear ? `H${x + 4}Q${x} ${yB} ${x} ${yB - 4}V${yT + 24}C${x + 2} ${yT + 8} ${x + 8} ${yT} ${x + nose} ${yT}Z` : `H${x + 3}Q${x} ${yB} ${x} ${yB - 3}V${yT + 5}Q${x} ${yT} ${x + 5} ${yT}Z`;
-    s += `<path class="u-body" d="${d}" fill="url(#u-steel)"/>`;
-    s += `<rect class="u-roof" x="${rear ? x + nose - 2 : x + 3}" y="${yT - 2.5}" width="${cw - (rear || front ? nose - 2 : 0) - 6}" height="3.5" rx="1.5"/>`;
-    // roof equipment (air conditioning) and pantographs
-    s += `<rect class="u-ac" x="${x + cw / 2 - 17}" y="${yT - 6}" width="34" height="4.5" rx="1.5"/>`;
+    const L = rear ? x + cab : x, R = front ? xe - cab : xe;      // straight part of the body
+    // gangway to the next car
+    if (!front) s += `<rect class="u-gang" x="${xe - 1}" y="${yW - 1}" width="${gap + 2}" height="${yB - yW - 2}" rx="1"/>`;
+    // underframe and bogies first so the body overlaps them
+    s += `<rect class="u-under" x="${x + 28}" y="${yB - 1}" width="${cw - 56}" height="7" rx="1.5"/>`;
+    for (const k of [0, 1, 2]) s += `<rect class="u-box" x="${x + 34 + k * 20}" y="${yB + 1}" width="13" height="6" rx="1"/>`;
+    for (const bx of [x + 20, xe - 20]) {
+      s += `<rect class="u-bogie" x="${bx - 15}" y="${yB + 1}" width="30" height="6" rx="2.5"/>`;
+      for (const wx of [bx - 8.5, bx + 8.5]) s += `<g class="u-wheelg"><circle class="u-wheel" cx="${wx}" cy="${yB + 9.5}" r="5.8"/><path class="u-spoke" d="M${wx - 4.3} ${yB + 9.5}H${wx + 4.3}M${wx} ${yB + 5.2}V${yB + 13.8}"/><circle class="u-hub" cx="${wx}" cy="${yB + 9.5}" r="1.5"/></g>`;
+    }
+    // body: rounded roof shoulders; cab ends are capsules with a big top radius
+    let d = `M${L + (rear ? 0 : rS)} ${yT}H${R - (front ? 0 : rS)}`;
+    d += front ? `C${xe - 5} ${yT} ${xe} ${yT + 7} ${xe} ${yT + 20}V${yB - 5}Q${xe} ${yB} ${xe - 5} ${yB}` : `Q${xe} ${yT} ${xe} ${yT + rS}V${yB - 2}Q${xe} ${yB} ${xe - 2} ${yB}`;
+    d += rear ? `H${x + 5}Q${x} ${yB} ${x} ${yB - 5}V${yT + 20}C${x} ${yT + 7} ${x + 5} ${yT} ${L} ${yT}Z` : `H${x + 2}Q${x} ${yB} ${x} ${yB - 2}V${yT + rS}Q${x} ${yT} ${x + rS} ${yT}Z`;
+    s += `<path class="u-body" d="${d}" fill="url(#u-alu)"/>`;
+    // roof ventilation grilles on the shoulder
+    const gx0 = x + (rear ? 26 : 14), gx1 = xe - (front ? 26 : 14);
+    s += `<rect class="u-grille" x="${gx0}" y="${yT + .8}" width="${gx1 - gx0}" height="3.2" rx="1.5"/>`;
+    let gl = ''; for (let gx = gx0 + 2; gx < gx1 - 1; gx += 2.4) gl += `M${gx} ${yT + 1.3}v2.2`;
+    s += `<path class="u-grill" d="${gl}"/>`;
     const pan = cars === 5 ? (c === 1 || c === 3) : (c === 1 || c === 2);
-    if (pan) { const px = x + cw / 2 + (c < cars / 2 ? -26 : 26); s += `<g class="u-panto"><rect x="${px - 8}" y="${yT - 4.5}" width="16" height="2.5" rx="1"/><path d="M${px - 6} ${yT - 3.5}L${px + 7} ${yT - 13}L${px - 2} ${yT - 20}M${px - 8} ${yT - 20}H${px + 4}"/></g>`; }
-    // glazing: continuous dark band; saloon lights show through when the doors open
-    const g0 = rear ? x + nose + 1 : x + 4, g1 = front ? xe - nose - 1 : xe - 4;
-    s += `<rect class="u-band" x="${g0}" y="${yW}" width="${g1 - g0}" height="${hW}" rx="2.5"/>`;
-    for (let k = 1; k < 6; k++) { const px = g0 + (g1 - g0) * k / 6; s += `<line class="u-pillar" x1="${px}" y1="${yW + 1}" x2="${px}" y2="${yW + hW - 1}"/>`; }
-    // stripe in the line colour, skirt
-    s += `<rect class="u-stripe l${line}" x="${rear ? x + 3 : x}" y="${yB - 22}" width="${cw - (rear ? 3 : 0) - (front ? 3 : 0)}" height="3" />`;
-    s += `<rect class="u-skirt" x="${x + 2}" y="${yB - 8}" width="${cw - 4}" height="8" rx="2"/>`;
-    // four double doors
-    const pos = front ? [.13, .35, .57, .79] : rear ? [.21, .43, .65, .87] : [.14, .38, .62, .86];
+    if (pan) { const px = x + cw / 2 + (c < cars / 2 ? -30 : 30); s += `<g class="u-panto"><rect x="${px - 9}" y="${yT - 2.6}" width="18" height="2.6" rx="1"/><path d="M${px - 7} ${yT - 2}L${px + 8} ${yT - 11}L${px - 3} ${yT - 18.5}M${px - 10} ${yT - 18.5}H${px + 4}"/></g>`; }
+    // glazing band: continuous dark glass from end to end of the saloon
+    const g0 = rear ? x + cab + 1 : x + 3, g1 = front ? xe - cab - 1 : xe - 3;
+    s += `<rect class="u-band" x="${g0}" y="${yW}" width="${g1 - g0}" height="${yWb - yW}" rx="2" fill="url(#u-glass)"/>`;
+    s += `<rect class="u-sheen" x="${g0}" y="${yW}" width="${g1 - g0}" height="${yWb - yW}" rx="2" fill="url(#u-sheen)"/>`;
+    // three double doors per side
+    const pos = front ? [.17, .45, .72] : rear ? [.28, .55, .83] : [.2, .5, .8];
+    const dw = 7.5, dTop = yW, dBot = yB - 5;
     for (const f of pos) {
-      const dx = x + cw * f, dw = 6.5;
-      s += `<rect class="u-doorway" x="${dx - dw}" y="${yW - 4}" width="${dw * 2}" height="${yB - yW - 6}" rx="1.5"/>`;
-      s += `<g class="u-door l"><rect class="u-leaf" x="${dx - dw}" y="${yW - 4}" width="${dw}" height="${yB - yW - 6}" rx="1"/><rect class="u-dwin" x="${dx - dw + 1.4}" y="${yW - 1}" width="${dw - 2.4}" height="${hW + 2}" rx="1"/></g>`;
-      s += `<g class="u-door r"><rect class="u-leaf" x="${dx}" y="${yW - 4}" width="${dw}" height="${yB - yW - 6}" rx="1"/><rect class="u-dwin" x="${dx + 1}" y="${yW - 1}" width="${dw - 2.4}" height="${hW + 2}" rx="1"/></g>`;
-      s += `<circle class="u-lamp" cx="${dx}" cy="${yW - 6.5}" r="1.3"/>`;
+      const dx = x + cw * f;
+      s += `<g class="u-doorset"><rect class="u-inside" x="${dx - dw}" y="${dTop}" width="${dw * 2}" height="${dBot - dTop}" fill="url(#u-inside)"/>`
+        + `<line class="u-pole" x1="${dx}" y1="${dTop + 2}" x2="${dx}" y2="${dBot - 1}"/>`
+        + `<g class="u-door l"><rect class="u-leaf" x="${dx - dw}" y="${dTop}" width="${dw}" height="${dBot - dTop}"/><rect class="u-dglass" x="${dx - dw + 1}" y="${dTop + 1}" width="${dw - 1.6}" height="${yWb - yW - 3}" rx=".8"/></g>`
+        + `<g class="u-door r"><rect class="u-leaf" x="${dx}" y="${dTop}" width="${dw}" height="${dBot - dTop}"/><rect class="u-dglass" x="${dx + .6}" y="${dTop + 1}" width="${dw - 1.6}" height="${yWb - yW - 3}" rx=".8"/></g>`
+        + `<line class="u-jamb" x1="${dx - dw - .9}" y1="${dTop}" x2="${dx - dw - .9}" y2="${dBot}"/></g>`;
     }
-    // underframe, bogies and wheels
-    s += `<rect class="u-under" x="${x + 30}" y="${yB}" width="${cw - 60}" height="6" rx="1.5"/>`;
-    for (const bx of [x + 19, xe - 19]) {
-      s += `<rect class="u-bogie" x="${bx - 14}" y="${yB + 1}" width="28" height="6" rx="2.5"/>`;
-      for (const wx of [bx - 8, bx + 8]) s += `<g class="u-wheelg"><circle class="u-wheel" cx="${wx}" cy="${yB + 9}" r="6"/><path class="u-spoke" d="M${wx - 4.5} ${yB + 9}H${wx + 4.5}M${wx} ${yB + 4.5}V${yB + 13.5}"/><circle class="u-hub" cx="${wx}" cy="${yB + 9}" r="1.6"/></g>`;
-    }
-    // cabs: raked windscreen with the destination display, lights at buffer height
+    // side LED destination sign above the first door of each car
+    const lx = x + cw * pos[0] - 16;
+    s += `<rect class="u-sled" x="${lx}" y="${yW + 1.5}" width="9" height="3" rx=".6"/>`;
+    // orange-red band along the bottom of the body
+    s += `<path class="u-stripe" d="M${rear ? x + 4 : x + 1} ${yB - 4.5}H${front ? xe - 4 : xe - 1}V${yB - 1}H${rear ? x + 4 : x + 1}Z"/>`;
+    // cab ends
     if (front) {
-      s += `<path class="u-screen" d="M${xe - nose + 1} ${yW - 5}C${xe - 9} ${yW - 5} ${xe - 3} ${yW} ${xe - .8} ${yW + 12}L${xe - .8} ${yW + hW + 2}H${xe - nose + 1}Z"/>`;
-      s += `<rect class="u-led" x="${xe - nose + 3}" y="${yW - 2}" width="${nose - 7}" height="5" rx="1"/><text class="u-dest" x="${xe - nose / 2 - 0.5}" y="${yW + 1.9}" text-anchor="middle">${esc(dest.toUpperCase().slice(0, 12))}</text>`;
-      s += `<circle class="u-glow" cx="${xe + 2}" cy="${yB - 13}" r="11" fill="url(#u-glow)"/><rect class="u-light" x="${xe - 5}" y="${yB - 15}" width="5" height="3.5" rx="1.2"/>`;
+      s += `<path class="u-cabwin" d="M${xe - cab + 1} ${yW}H${xe - 5}C${xe - 2.2} ${yW} ${xe - .9} ${yW + 3} ${xe - .9} ${yW + 7}V${yWb + 4}H${xe - cab + 1}Z"/>`;
+      s += `<rect class="u-sideface" x="${xe - 2.6}" y="${yT + 14}" width="2.6" height="${yB - yT - 20}" rx="1.2"/>`;
+      s += `<circle class="u-glow" cx="${xe + 3}" cy="${yB - 13}" r="12" fill="url(#u-glow)"/><circle class="u-light" cx="${xe - 1.2}" cy="${yB - 13}" r="1.6"/>`;
+      s += ringsImg(xe - cab - 21, yW + 11, 12, 'u-rings');
+      if (unit) s += `<text class="u-num" x="${xe - cab - 2}" y="${yT + 5.6}" text-anchor="end">${esc(unit)}</text>`;
     }
     if (rear) {
-      s += `<path class="u-screen" d="M${x + nose - 1} ${yW - 5}C${x + 9} ${yW - 5} ${x + 3} ${yW} ${x + .8} ${yW + 12}L${x + .8} ${yW + hW + 2}H${x + nose - 1}Z"/>`;
-      s += `<rect class="u-tail" x="${x}" y="${yB - 15}" width="5" height="3.5" rx="1.2"/>`;
+      s += `<path class="u-cabwin" d="M${x + cab - 1} ${yW}H${x + 5}C${x + 2.2} ${yW} ${x + .9} ${yW + 3} ${x + .9} ${yW + 7}V${yWb + 4}H${x + cab - 1}Z"/>`;
+      s += `<rect class="u-sideface" x="${x}" y="${yT + 14}" width="2.6" height="${yB - yT - 20}" rx="1.2"/>`;
+      s += `<circle class="u-tail" cx="${x + 1.2}" cy="${yB - 13}" r="1.5"/>`;
     }
-    if (front && unit) s += `<text class="u-num" x="${xe - nose - 12}" y="${yB - 11}" text-anchor="end">${esc(unit)}</text>`;
   }
   s += `</g>`;
+  return s + '</svg>';
+}
+
+/** Front view of the cab: the silver "capsule" around a black glass face. */
+function frontSVG(line, unit, dest) {
+  let s = `<svg viewBox="0 0 64 72" role="img" aria-label="Front of the train">`;
+  s += `<defs><linearGradient id="f-alu" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="u-a3"/><stop offset=".18" class="u-a1"/><stop offset=".5" class="u-a0"/><stop offset=".82" class="u-a1"/><stop offset="1" class="u-a3"/></linearGradient>
+    <linearGradient id="f-glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2B3338"/><stop offset=".55" stop-color="#14191C"/><stop offset="1" stop-color="#0B0E10"/></linearGradient></defs>`;
+  s += `<path class="f-shell" d="M8 66Q4 66 4 61V22C4 10 12 3 24 3H40C52 3 60 10 60 22V61Q60 66 56 66Z" fill="url(#f-alu)"/>`;
+  s += `<rect class="f-grille" x="20" y="4.2" width="24" height="2.4" rx="1.2"/>`;
+  s += `<path class="f-face" d="M12 55Q9 55 9 52V23C9 14 15 9 24 9H40C49 9 55 14 55 23V52Q55 55 52 55Z" fill="url(#f-glass)"/>`;
+  s += `<rect class="f-led" x="15" y="12" width="34" height="5" rx="1"/>`;
+  s += `<text class="f-ledtext" x="32" y="15.9" text-anchor="middle">${esc(dest.toUpperCase().slice(0, 14))}</text>`;
+  s += `<path class="f-reflect" d="M14 20L26 20L18 38L12 38Z"/>`;
+  s += `<path class="f-wiper" d="M36 39L27 24"/>`;
+  s += ringsImg(40, 40, 9);
+  s += `<circle class="f-head" cx="15.5" cy="48" r="2"/><circle class="f-head" cx="48.5" cy="48" r="2"/>`;
+  s += `<circle class="f-tail" cx="21" cy="48.5" r="1.2"/><circle class="f-tail" cx="43" cy="48.5" r="1.2"/>`;
+  s += `<rect class="f-bumper" x="12" y="57" width="40" height="6.5" rx="3"/>`;
+  s += `<rect class="f-line l${line}" x="26" y="59.2" width="12" height="2" rx="1"/>`;
+  if (unit) s += `<text class="f-num" x="52" y="8" text-anchor="end">${esc(unit)}</text>`;
   return s + '</svg>';
 }
 let unitWanted = null, unitNode = null, unitSig = '';
@@ -815,7 +863,7 @@ function renderTrain(key) {
   const dly = a.rt ? currentDelays(a.rt, tNow) : null;
   const dNow = dly ? dly[pos.dwell ? pos.k : pos.next] : null;
   setHead(`<b class="badge sm l${line}">L${line}</b><span>Train ${a.rt && a.rt.v ? esc(a.rt.v) : ''}</span>`, 'To ' + short(destOf(a.i)),
-    `From ${short(originOf(a.i))} at ${hhmm((a.ctx.base / 1000 + start) * 1000)}`);
+    `From ${short(originOf(a.i))} at ${hhmm((a.ctx.base / 1000 + start) * 1000)}`, frontSVG(line, a.rt && a.rt.v, short(destOf(a.i))));
   const series = a.rt && a.rt.v ? ({ '600 series': '600 series · 5 cars', '550 series': '550 series · 4 cars', '500 series': '500 series · 4–5 cars' })[unitSeries(a.rt.v)] || null : null;
   let html = `<div class="unit-slot"></div>`;
   unitWanted = { key, line, unit: a.rt && a.rt.v, dest: short(destOf(a.i)), dwell: pos.dwell };
@@ -962,6 +1010,14 @@ function renderAttribution() {
 }
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 5000); }
 
+/* brand: the wordmark swaps to a light version on dark backgrounds */
+function setBrand() {
+  if (!BRAND) return;
+  $('brand-logo').src = isDark() ? BRAND.logoDark : BRAND.logo;
+  let icon = document.querySelector('link[rel="icon"]');
+  if (icon) icon.href = BRAND.rings;
+}
+
 /* line toggles */
 document.querySelectorAll('.linechip').forEach(b => {
   const L = +b.dataset.line;
@@ -1048,8 +1104,8 @@ addEventListener('keydown', e => {
   if (e.key === '-') zoomAt(1 / 1.4, W / 2, H / 2);
 });
 addEventListener('resize', () => { computeLimits(); constrain(); onView(); });
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => onView());
-new MutationObserver(() => onView()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { onView(); setBrand(); });
+new MutationObserver(() => { onView(); setBrand(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 /* =====================================================================
  * Main loop
@@ -1082,6 +1138,7 @@ async function start() {
   }
   prepare();
   M = MBCore.createModel(D);
+  setBrand();
   drawBasemap();
   computeLimits();
   buildStations();

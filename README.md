@@ -89,6 +89,7 @@ lib/zip.js              minimal unzip for the GTFS archive
 public/index.html       page shell
 public/style.css        styles (light and dark)
 public/core.js          service-day + delay model (shared with tests)
+public/brand.js         Metro Bilbao logo (inline images; not MIT-licensed)
 public/app.js           map, trains, panels
 public/timetable.json   bundled timetable snapshot (valid 26 Sep – 26 Oct 2026)
 public/basemap.json     Bizkaia vector basemap
@@ -126,4 +127,6 @@ Data shown by the app belongs to its publishers and keeps their terms:
 - Municipal boundaries: Basque Government / Eustat (GeoEuskadi)
 - Coast, Ría, rivers and roads: © OpenStreetMap contributors, ODbL, https://www.openstreetmap.org/copyright
 
-The map footer credits all of these. This is an independent project, not affiliated with Metro Bilbao or CTB. Train positions are estimates.
+The map footer credits all of these. Train positions are estimates.
+
+This project is developed for the Diputación Foral de Bizkaia on behalf of CTB (contract notice TED 597284-2026). The Metro Bilbao logo in `public/brand.js` belongs to Metro Bilbao and is used for this project only. The MIT licence covers the code, not the logo.

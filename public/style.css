@@ -87,7 +87,7 @@ button{font:inherit;color:inherit}
 .train .shadow{fill:#000;opacity:.22}
 .train .body{fill:var(--steel);stroke-width:1.8;stroke-linejoin:round}
 .train.l1 .body{stroke:var(--l1)} .train.l2 .body{stroke:var(--l2)}
-.train .roof{fill:none;stroke:var(--steel-line);stroke-width:1.2;stroke-linecap:round}
+.train .roof{fill:#5B666C;opacity:.55}
 .train .panto{fill:none;stroke:#46525A;stroke-width:.9;stroke-linecap:round}
 .train .glass{fill:#1B2226}
 .train .head{fill:#FFE9A8}
@@ -101,8 +101,9 @@ button{font:inherit;color:inherit}
 
 /* ---------- floating card ---------- */
 #card{position:absolute;top:calc(env(safe-area-inset-top,0px) + 16px);left:16px;width:318px;max-width:calc(100% - 32px);background:var(--paper-a);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px 12px;display:flex;flex-direction:column;gap:12px;z-index:5}
-.brand{display:flex;align-items:center;gap:10px}
-.logo{width:34px;height:34px;flex:none}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .sub{margin:0;border-left:1px solid var(--rule);padding-left:12px;line-height:1.25;max-width:9em}
+.brand-logo{height:34px;width:auto;flex:none;display:block}
 .logo .lg-bg{fill:var(--l1)} .logo .lg-body{fill:#fff} .logo .lg-glass{fill:#1D2326} .logo .lg-lamp{fill:var(--l1)} .logo .lg-rail{fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round}
 h1{margin:0;font-size:17px;font-weight:760;font-stretch:92%;letter-spacing:-.005em;line-height:1.1}
 .sub{margin:1px 0 0;color:var(--muted);font-size:12px;font-stretch:95%}
@@ -178,51 +179,65 @@ h1{margin:0;font-size:17px;font-weight:760;font-stretch:92%;letter-spacing:-.005
 .empty{padding:22px 18px;color:var(--muted);line-height:1.5}
 .note{padding:6px 18px 16px;color:var(--muted);font-size:12px;line-height:1.45}
 
-/* train illustration: side view of a CAF 500/550/600-series unit */
-.unit{padding:10px 10px 2px;border-bottom:1px solid var(--rule);background:linear-gradient(var(--hover),var(--paper) 80%);overflow:hidden}
-.unit svg{width:100%;height:auto;display:block;overflow:visible}
-.unit .u-s0{stop-color:#F1F3F3} .unit .u-s1{stop-color:#D3D8DA} .unit .u-s2{stop-color:#B4BCBF}
-.unit .u-body{stroke:#8E989C;stroke-width:.8}
-.unit .u-roof{fill:#A9B2B5}
-.unit .u-ac{fill:#C3C9CB;stroke:#8E989C;stroke-width:.6}
-.unit .u-panto rect{fill:#5B666A}
-.unit .u-panto path{fill:none;stroke:#39434A;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+/* train illustration (side + front view of a CAF 500/550/600-series unit, drawn from photos) */
+.unit{position:relative;padding:14px 12px 4px;border-bottom:1px solid var(--rule);background:linear-gradient(var(--hover),var(--paper) 85%);overflow:hidden}
+.unit svg{display:block;overflow:visible}
+.unit > svg{width:100%;height:auto}
+.u-a0{stop-color:#F4F6F6} .u-a1{stop-color:#DDE2E4} .u-a2{stop-color:#C4CBCE} .u-a3{stop-color:#A4ADB1}
+.unit .u-body{stroke:#8A9498;stroke-width:.7}
+.unit .u-grille{fill:#59636A} .unit .u-grill{stroke:#2E363B;stroke-width:.9}
+.unit .u-panto rect{fill:#4E585E}
+.unit .u-panto path{fill:none;stroke:#30393F;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
 .unit .u-wire{stroke:var(--faint);stroke-width:.9}
-.unit .u-band{fill:#1B2226}
-.unit .u-pillar{stroke:#39444A;stroke-width:1}
-.unit .u-stripe.l1{fill:var(--l1)} .unit .u-stripe.l2{fill:#1D2326}
-.unit .u-skirt{fill:#9AA4A8}
-.unit .u-doorway{fill:#FFF3D6}
-.unit .u-leaf{fill:#C6CDCF;stroke:#8E989C;stroke-width:.6}
-.unit .u-dwin{fill:#1B2226}
-.unit .u-door{transition:transform .9s cubic-bezier(.45,0,.25,1)}
-.unit .u-lamp{fill:#6D777B;transition:fill .3s}
-.unit .u-gang{fill:#2A3236} .unit .u-gangl{stroke:#4A555A;stroke-width:.8}
-.unit .u-under{fill:#3A4449}
-.unit .u-bogie{fill:#2A3236}
-.unit .u-wheel{fill:#1B2124;stroke:#7B868A;stroke-width:1.2}
-.unit .u-spoke{stroke:#7B868A;stroke-width:1.1;fill:none}
-.unit .u-hub{fill:#A7B0B3}
+.unit .u-band{stroke:#0A0D0F;stroke-width:.5}
+.unit .u-gang{fill:#262D31}
+.unit .u-under{fill:#2F383D} .unit .u-box{fill:#3F4A50}
+.unit .u-bogie{fill:#262D31}
+.unit .u-wheel{fill:#171C1F;stroke:#78838A;stroke-width:1.1}
+.unit .u-spoke{stroke:#78838A;stroke-width:1;fill:none}
+.unit .u-hub{fill:#A5AEB2}
 .unit .u-rail{stroke:var(--faint);stroke-width:2}
 .unit .u-sleeper{fill:var(--rule)}
-.unit .u-screen{fill:#10161A}
-.unit .u-led{fill:#050708}
-.unit .u-dest{font-family:var(--mono);font-size:3.6px;font-weight:600;fill:#FFB23A;letter-spacing:.02em}
-.unit .u-light{fill:#FFF6D6} .unit .u-glow{opacity:0;transition:opacity .4s}
+.unit .u-leaf{fill:#CDD3D5;stroke:#8A9498;stroke-width:.5}
+.unit .u-dglass{fill:#151A1D}
+.unit .u-inside{opacity:0;transition:opacity .4s}
+.unit .u-pole{stroke:#B8A57E;stroke-width:1;opacity:0;transition:opacity .4s}
+.unit .u-jamb{stroke:#E4502A;stroke-width:1.1}
+.unit .u-door{transition:transform 1s cubic-bezier(.45,0,.25,1)}
+.unit .u-stripe{fill:#E4502A}
+.unit .u-sled{fill:#0A0C0D;stroke:#39434A;stroke-width:.3}
+.unit .u-cabwin{fill:#12171A}
+.unit .u-sideface{fill:#101417}
+.unit .u-light{fill:#FFF6D6} .unit .u-glow{opacity:0;transition:opacity .5s}
 .unit .u-tail{fill:#E0443A}
-.unit .u-num{font-family:var(--mono);font-size:7px;font-weight:600;fill:#39434A}
+.unit .u-num{font-family:var(--mono);font-size:5px;font-weight:600;fill:#39434A}
 .unit .u-wheelg{transform-box:fill-box;transform-origin:center}
 .unit.moving .u-wheelg{animation:spin .55s linear infinite}
-.unit.moving .u-track{animation:slide .38s linear infinite}
+.unit.moving .u-track{animation:slide .36s linear infinite}
 .unit.moving .u-bodyg{animation:bob 1.3s ease-in-out infinite}
 .unit.moving .u-glow{opacity:1}
-.unit.open .u-door.l{transform:translateX(-5.6px)} .unit.open .u-door.r{transform:translateX(5.6px)}
-.unit.open .u-lamp{fill:var(--l1)}
-.unit.open .u-band{fill:#2F3A3F}
+.unit.moving .u-sled{fill:#3A1A08}
+.unit.open .u-door.l{transform:translateX(-6.6px)} .unit.open .u-door.r{transform:translateX(6.6px)}
+.unit.open .u-inside,.unit.open .u-pole{opacity:1}
+/* front view */
+.f-shell{stroke:#8A9498;stroke-width:.7}
+.f-grille{fill:#59636A}
+.f-led{fill:#050607}
+.f-ledtext{font-family:var(--mono);font-size:3.2px;font-weight:600;fill:#FF8A2A}
+.f-reflect{fill:#fff;opacity:.07}
+.f-wiper{stroke:#050607;stroke-width:1;stroke-linecap:round}
+.f-head{fill:#FFF6D6}
+.f-tail{fill:#E0443A;opacity:.35}
+.f-bumper{fill:#15191C}
+.f-line.l1{fill:var(--l1)} .f-line.l2{fill:#E7E9E6}
+.f-num{font-family:var(--mono);font-size:3.4px;font-weight:600;fill:#39434A}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes slide{to{transform:translateX(-12px)}}
+@keyframes slide{to{transform:translateX(-11px)}}
 @keyframes bob{50%{transform:translateY(.45px)}}
-.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 18px}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 18px}
+.ph.has-front{padding-left:78px;min-height:86px}
+.ph-front{position:absolute;left:16px;top:12px;width:50px}
+.ph-front svg{width:100%;height:auto;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2))}
 .facts div{min-width:0}
 .facts dt{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .facts dd{margin:2px 0 0;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
