@@ -98,11 +98,19 @@ def lns(g, t):
     return res
 
 labels = []
+# The GeoJSON copy above has lost every accented letter and ñ (and predates the 2015 rename of Sopelana to Sopela).
+# Official names (Eustat):
+NAME_FIX = {'Gees': 'Güeñes', 'Abadio': 'Abadiño', 'Urdua': 'Urduña', 'Maaria': 'Mañaria', 'Meaka': 'Meñaka',
+            'Ereo': 'Ereño', 'Urdliz': 'Urduliz', 'Sopelana': 'Sopela',
+            'Munitibar-Arbatzegi Gerrikaitz-': 'Munitibar-Arbatzegi Gerrikaitz',
+            'Abanto y Cirvana-Abanto Zierbena': 'Abanto y Ciérvana-Abanto Zierbena',
+            'Valle de Trpaga-Trapagaran': 'Valle de Trápaga-Trapagaran'}
 for name, code, g in munis:
     if not name or 'partzuergoa' in name.lower(): continue       # shared-pasture areas, not towns
     big = max(getattr(g, 'geoms', [g]), key=lambda p: p.area)
     pt = polylabel(big, 20)
-    labels.append([name.split('/')[0].strip(), round(pt.x / Q), round(pt.y / Q), round(g.area / 1e6, 1)])
+    name = name.split('/')[0].strip(); name = NAME_FIX.get(name, name)
+    labels.append([name, round(pt.x / Q), round(pt.y / Q), round(g.area / 1e6, 1)])
 labels.sort(key=lambda l: -l[3])
 
 out = {'q': Q, 'origin': [LON0, LAT0], 'bounds': [round(v / Q) for v in BB.bounds],
